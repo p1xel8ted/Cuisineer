@@ -4,6 +4,9 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/F2F2DI3WA)<br>
 
+![GitHub](https://img.shields.io/github/downloads/p1xel8ted/Cuisineer/total?style=flat-square
+)<br>
+
 ## Features
 - (Ultrawide) Adds main display resolution to the resolution menu in-game. Because it irks me that it's not there.
 - Corrects the camera update rate to a) the minimum to prevent judder or b) your refresh rate, for a little more smoothness
