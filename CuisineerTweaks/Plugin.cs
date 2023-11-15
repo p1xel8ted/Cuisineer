@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
@@ -9,14 +10,14 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 
-namespace Cuisineer;
+namespace CuisineerTweaks;
 
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
 public class Plugin : BasePlugin
 {
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
-    private const string PluginVersion = "0.1.1";
+    private const string PluginVersion = "0.1.2";
     internal static ManualLogSource Logger { get; private set; }
     private static ConfigEntry<bool> CorrectFixedUpdateRate { get; set; }
     private static ConfigEntry<bool> UseRefreshRateForFixedUpdateRate { get; set; }
@@ -75,10 +76,12 @@ public class Plugin : BasePlugin
         Application.targetFrameRate = MaxRefresh;
         Logger.LogInfo($"Set targetFrameRate to {Application.targetFrameRate}.");
 
-        if (!CorrectFixedUpdateRate.Value) return;
-        var scale = UseRefreshRateForFixedUpdateRate.Value ? MaxRefresh : TimeScale;
-        Time.fixedDeltaTime = 1f / scale;
-        Logger.LogInfo($"Set fixedDeltaTime to {Time.fixedDeltaTime} ({scale}).");
+        if (CorrectFixedUpdateRate.Value)
+        {
+            var scale = UseRefreshRateForFixedUpdateRate.Value ? MaxRefresh : TimeScale;
+            Time.fixedDeltaTime = 1f / scale;
+            Logger.LogInfo($"Set fixedDeltaTime to {Time.fixedDeltaTime} ({scale}).");
+        }
 
         UpdateAutoSave();
         UpdateInventoryStackSize();
@@ -87,6 +90,10 @@ public class Plugin : BasePlugin
     private static void UpdateInventoryStackSize()
     {
         if (InventoryManager.Instance == null) return;
+        var s = new Stopwatch();
+        s.Start();
+        Logger.LogInfo("Updating Inventory Stack Sizes");
+        var count = 0;
         foreach (var instanceMInventory in InventoryManager.Instance.m_Inventories)
         {
             if (instanceMInventory is {Value: null}) continue;
@@ -94,14 +101,17 @@ public class Plugin : BasePlugin
             {
                 if (valueMSlot == null || valueMSlot.ItemSO == null) continue;
                 valueMSlot.ItemSO.m_MaxStack = 999;
-                Logger.LogInfo($"Set {valueMSlot.ItemID} stack size to {valueMSlot.ItemSO.m_MaxStack} in inventory {instanceMInventory.Value.Type}");
+                count++;
             }
         }
+        s.Stop();
+        Logger.LogInfo($"Updated {count} item's stack sizes in {s.ElapsedMilliseconds}ms, {s.ElapsedTicks} ticks");
     }
 
     private static void UpdateAutoSave()
     {
         if (CuisineerSaveManager.Instance == null) return;
+        Logger.LogInfo("Initiating AutoSave");
         CuisineerSaveManager.Instance.m_AutoSave = EnableAutoSave.Value;
         CuisineerSaveManager.Instance.m_AutoSaveFrequency = AutoSaveFrequency.Value;
         Logger.LogInfo($"AutoSave: {CuisineerSaveManager.Instance.m_AutoSave} ({CuisineerSaveManager.Instance.m_AutoSaveFrequency / 60f} minutes)");

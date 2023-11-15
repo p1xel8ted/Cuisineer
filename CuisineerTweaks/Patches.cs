@@ -1,10 +1,12 @@
-﻿using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
-namespace Cuisineer;
+namespace CuisineerTweaks;
 
 [Harmony]
+[SuppressMessage("ReSharper", "InconsistentNaming")]
 public static class Patches
 {
     [HarmonyPrefix]

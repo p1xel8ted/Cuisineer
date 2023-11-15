@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cuisineer", "Cuisineer\Cuisineer.csproj", "{CBC22BEC-5A6A-4C13-A803-DF6C624370D8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CuisineerTweaks", "CuisineerTweaks\CuisineerTweaks.csproj", "{CBC22BEC-5A6A-4C13-A803-DF6C624370D8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

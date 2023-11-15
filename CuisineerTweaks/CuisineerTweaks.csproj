@@ -2,9 +2,8 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <AssemblyName>Cuisineer</AssemblyName>
-        <Description>Cuisineer</Description>
-        <Version>0.1.1</Version>
+        <Description>Cuisineer Tweaks</Description>
+        <Version>0.1.2</Version>
         <AssemblyVersion>$(Version)</AssemblyVersion>
         <FileVersion>$(Version)</FileVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -14,7 +13,7 @@
             https://nuget.bepinex.dev/v3/index.json;
             https://nuget.samboy.dev/v3/index.json
         </RestoreAdditionalProjectSources>
-        <RootNamespace>Cuisineer</RootNamespace>
+        <PackageId>CuisineerTweaks</PackageId>
     </PropertyGroup>
 
     <ItemGroup>
