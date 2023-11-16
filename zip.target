@@ -16,7 +16,7 @@
         <Exec Command="xcopy /V &quot;$(OutputPath)&quot; &quot;$(TempDir)&quot; /E /I /Y" />
         <Exec Command="del &quot;$(TempDir)\*.zip&quot; &quot;$(TempDir)\*.json&quot; &quot;$(TempDir)\*.pdb&quot;" />
         <ZipDirectory Condition="'$(Configuration)'=='Release'" Overwrite="true"
-                SourceDirectory="$(MSBuildProjectDirectory)\temp"
+                SourceDirectory="$(MSBuildProjectDirectory)\temp\plugins\$(MSBuildProjectName)"
                 DestinationFile="$(SolutionDir)\AAA_Releases\$(MSBuildProjectName)_v$(Version)_BepInEx.zip" />
         <RemoveDir Directories="$(MSBuildProjectDirectory)\temp" />
     </Target>

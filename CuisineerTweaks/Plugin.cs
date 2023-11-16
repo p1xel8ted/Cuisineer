@@ -17,7 +17,7 @@ public class Plugin : BasePlugin
 {
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
-    private const string PluginVersion = "0.1.2";
+    private const string PluginVersion = "0.1.3";
     internal static ManualLogSource Logger { get; private set; }
     private static ConfigEntry<bool> CorrectFixedUpdateRate { get; set; }
     private static ConfigEntry<bool> UseRefreshRateForFixedUpdateRate { get; set; }

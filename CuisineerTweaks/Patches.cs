@@ -22,6 +22,8 @@ public static class Patches
     public static void UI_Cutscene_RefreshText(ref UI_Cutscene __instance)
     {
         if (!Plugin.InstantText.Value || __instance == null) return;
+        var speaker = __instance.m_CurrLine.m_MainSpeaker;
+        if(speaker is not (SpeakerType.Left or SpeakerType.Right)) return; 
         __instance.Skip();
     }
     
@@ -39,7 +41,7 @@ public static class Patches
         if (!resDatas.Exists(a => a.m_Height == Display._mainDisplay.systemHeight && a.m_Width == Display._mainDisplay.systemWidth))
         {
             resDatas.Add(myResData);
-            Plugin.Logger.LogInfo($"Added {myResData.m_Width}x{myResData.m_Height} to resolution list");
+            Plugin.Logger.LogInfo($"Main display resolution not detected; added {myResData.m_Width}x{myResData.m_Height} to resolution list");
         }
 
         UI_GameplayOptions.ResolutionDatas = resDatas.ToArray();
