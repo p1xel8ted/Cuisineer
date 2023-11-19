@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using HarmonyLib;
 using UnityEngine;
@@ -10,6 +11,7 @@ namespace CuisineerTweaks;
 public static class Patches
 {
     private const string UpgradeDateRestaurant = "UPGRADE_DATE_RESTAURANT";
+    private const string BattleBrewProductions = "BattleBrew Productions";
     private static RestaurantExt RestaurantExtInstance { get; set; }
     private static float NextRegen { get; set; }
 
@@ -69,17 +71,20 @@ public static class Patches
         __instance.SwitchState(UI_BrewArea.Stage.Claim);
     }
 
+    // internal static UI_MainMenu MainMenuInstance { get; set; }
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(UI_MainMenu), nameof(UI_MainMenu.HandleDependenciesReady))]
     public static void UI_MainMenu_Awake(ref UI_MainMenu __instance)
     {
+        // MainMenuInstance ??= __instance;
+    
         __instance.m_FadeDuration = 0f;
         __instance.m_CreditBtn.gameObject.SetActive(false);
         __instance.m_QuitGameBtn.transform.localPosition = __instance.m_CreditBtn.transform.localPosition;
         __instance.m_ButtonsBackingAnimator.Activate();
         __instance.m_WaitingForInput = false;
         __instance.m_PressAnyButtonText.CrossFadeAlpha(0, 0, true);
-
         if (Plugin.LoadToSaveMenu.Value)
         {
             __instance.StartGameBtnClicked();
@@ -121,6 +126,24 @@ public static class Patches
             NextRegen = Time.time + Plugin.RegenPlayerHpTick.Value;
             __instance.Heal(Plugin.RegenPlayerHpAmount.Value, !Plugin.RegenPlayerHpShowFloatingText.Value);
         }
+    }
+    
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(GUI), nameof(GUI.Label), typeof(Rect), typeof(string), typeof(GUIStyle))]
+    public static void GUI_Label(ref Rect position, ref string text, ref GUIStyle style)
+    {
+  
+        var version = Application.version;
+        var versionText = "v" + version;
+        if (text.Contains(versionText, StringComparison.OrdinalIgnoreCase))
+        {
+            style.alignment = TextAnchor.UpperLeft;
+            position.y -= 17;
+            style.wordWrap = true;
+            text += $"{Environment.NewLine}Cuisineer Tweaks v{Plugin.PluginVersion}"; 
+        }
+    
+      
     }
 
 

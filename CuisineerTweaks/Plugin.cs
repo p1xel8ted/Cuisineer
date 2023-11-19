@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using BepInEx;
@@ -10,6 +11,7 @@ using Il2CppSystem.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace CuisineerTweaks;
 
@@ -18,8 +20,10 @@ public class Plugin : BasePlugin
 {
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
-    private const string PluginVersion = "0.1.5";
+    internal const string PluginVersion = "0.1.6";
     internal static ManualLogSource Logger { get; private set; }
+    
+    private static ConfigEntry<bool> CorrectMainMenuAspect { get; set; }
     private static ConfigEntry<bool> CorrectFixedUpdateRate { get; set; }
     private static ConfigEntry<bool> UseRefreshRateForFixedUpdateRate { get; set; }
     internal static ConfigEntry<bool> IncreaseStackSize { get; private set; }
@@ -68,23 +72,26 @@ public class Plugin : BasePlugin
     public override void Load()
     {
         Logger = Log;
-// Group 1: Performance Settings
+
+        // Group 1: Performance Settings
         CorrectFixedUpdateRate = Config.Bind("01. Performance", "CorrectFixedUpdateRate", true,
             new ConfigDescription("Adjusts the fixed update rate to minimum amount to reduce camera judder based on your refresh rate."));
         UseRefreshRateForFixedUpdateRate = Config.Bind("01. Performance", "UseRefreshRateForFixedUpdateRate", false,
             new ConfigDescription("Sets the fixed update rate based on the monitor's refresh rate for smoother gameplay. If you're playing on a potato, this may have performance impacts."));
+        CorrectMainMenuAspect = Config.Bind("01. Performance", "CorrectMainMenuAspect", true,
+            new ConfigDescription("Adjusts the main menu images to fit the screen. Will only be applied on aspect ratios wider than 16:9."));
 
-// Group 2: User Interface Enhancements
+        // Group 2: User Interface Enhancements
         InstantText = Config.Bind("02. User Interface", "InstantDialogueText", true,
             new ConfigDescription("Dialogue text is instantly displayed, skipping the typewriter effect."));
 
-// Group 3: Inventory Management
+        // Group 3: Inventory Management
         IncreaseStackSize = Config.Bind("03. Inventory", "IncreaseStackSize", true,
             new ConfigDescription("Enables increasing the item stack size, allowing for more efficient inventory management."));
         IncreaseStackSizeValue = Config.Bind("03. Inventory", "IncreaseStackSizeValue", 999,
             new ConfigDescription("Determines the maximum number of items in a single stack.", new AcceptableValueRange<int>(1, 999)));
-
-// Group 4: Save System Customization
+        
+        // Group 4: Save System Customization
         EnableAutoSave = Config.Bind("04. Save System", "EnableAutoSave", true,
             new ConfigDescription("Activates the auto-save feature, automatically saving game progress at set intervals."));
         AutoSaveFrequency = Config.Bind("04. Save System", "AutoSaveFrequency", 300,
@@ -96,8 +103,8 @@ public class Plugin : BasePlugin
             new ConfigDescription("Automatically loads a pre-selected save slot when starting the game."));
         AutoLoadSpecifiedSaveSlot = Config.Bind("04. Save System", "AutoLoadSpecifiedSaveSlot", 1,
             new ConfigDescription("Determines which save slot to auto-load.", new AcceptableValueRange<int>(1, 5)));
-
-// Group 5: Gameplay Enhancements
+        
+        // Group 5: Gameplay Enhancements
         PauseTimeWhenViewingInventories = Config.Bind("05. Gameplay", "PauseTimeWhenViewingInventories", true,
             new ConfigDescription("Pauses the game when accessing inventory screens, excluding cooking interfaces."));
         UnlockBothModSlots = Config.Bind("05. Gameplay", "UnlockBothModSlots", false,
@@ -106,8 +113,8 @@ public class Plugin : BasePlugin
             new ConfigDescription("Allows for immediate upgrades to the restaurant, bypassing build times."));
         InstantBrew = Config.Bind("05. Gameplay", "InstantBrew", false,
             new ConfigDescription("Enables instant brewing processes, eliminating the usual brewing duration."));
-
-// Group 6: Player Health Customization
+        
+        // Group 6: Player Health Customization
         ModifyPlayerMaxHp = Config.Bind("06. Player Health", "ModifyPlayerMaxHp", false,
             new ConfigDescription("Enables the modification of the player's maximum health."));
         ModifyPlayerMaxHpMultiplier = Config.Bind("06. Player Health", "ModifyPlayerMaxHpMultiplier", 1.25f,
@@ -120,8 +127,7 @@ public class Plugin : BasePlugin
             new ConfigDescription("Determines the time interval in seconds for each health regeneration tick.", new AcceptableValueList<float>(1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f)));
         RegenPlayerHpShowFloatingText = Config.Bind("06. Player Health", "RegenPlayerHpShowFloatingText", true,
             new ConfigDescription("Displays a floating text notification during health regeneration."));
-
-
+        
         SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>) OnSceneLoaded;
 
         Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginGuid);
@@ -160,9 +166,54 @@ public class Plugin : BasePlugin
             Logger.LogInfo($"Set fixedDeltaTime to {newValue} ({scale}fps). Original is {originalTime} ({Mathf.Round(1f / originalTime)}fps).");
         }
 
+        
+        
         UpdateAutoSave();
         UpdateInventoryStackSize();
+
+        if (arg0.name.Equals("MainMenuScene"))
+        {
+           
+       
+           
+            UpdateMainMenu();
+        }
     }
+
+    private static void UpdateMainMenu()
+    {
+        if (!CorrectMainMenuAspect.Value) return;
+        const float baseAspect = 16f / 9f;
+        var currentAspect = Display.main.systemWidth / (float) Display.main.systemHeight;
+        if (currentAspect <= baseAspect) return;
+
+        var positiveScaleFactor = currentAspect / baseAspect;
+        var negativeScaleFactor = 1f / positiveScaleFactor;
+        Logger.LogInfo($"Current aspect ratio ({currentAspect}) is greater than base aspect ratio ({baseAspect}). Resizing UI elements.");
+
+        ScaleElement("UI_MainMenuCanvas/Mask", true);
+        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container", false, positiveScaleFactor);
+        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/Centre/MC", false, negativeScaleFactor);
+        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/Press any key text", false, negativeScaleFactor);
+        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/CuisineerLogo", false, negativeScaleFactor);
+        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/ButtonsBacking", false, negativeScaleFactor);
+    }
+
+    private static void ScaleElement(string path, bool maskCheck, float scaleFactor = 1f)
+    {
+        var element = GameObject.Find(path);
+        if (element == null) return;
+        if (maskCheck)
+        {
+            var maskComponent = element.GetComponent<Mask>();
+            if (maskComponent != null)
+            {
+                maskComponent.enabled = false;
+            }
+        }
+        element.transform.localScale = element.transform.localScale with {x = scaleFactor};
+    }
+
 
     private static void UpdateInventoryStackSize()
     {
