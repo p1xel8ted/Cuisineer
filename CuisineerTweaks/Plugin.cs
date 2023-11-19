@@ -6,6 +6,7 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
+using Il2CppSystem.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -17,17 +18,37 @@ public class Plugin : BasePlugin
 {
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
-    private const string PluginVersion = "0.1.3";
+    private const string PluginVersion = "0.1.5";
     internal static ManualLogSource Logger { get; private set; }
     private static ConfigEntry<bool> CorrectFixedUpdateRate { get; set; }
     private static ConfigEntry<bool> UseRefreshRateForFixedUpdateRate { get; set; }
     internal static ConfigEntry<bool> IncreaseStackSize { get; private set; }
+    internal static ConfigEntry<int> IncreaseStackSizeValue { get; private set; }
     internal static ConfigEntry<bool> InstantText { get; private set; }
     private static ConfigEntry<bool> EnableAutoSave { get; set; }
+
+    internal static ConfigEntry<bool> LoadToSaveMenu { get; private set; }
+    internal static ConfigEntry<bool> AutoLoadSpecifiedSave { get; private set; }
+    internal static ConfigEntry<int> AutoLoadSpecifiedSaveSlot { get; private set; }
+
+    private static ConfigEntry<bool> PauseTimeWhenViewingInventories { get; set; }
+    internal static ConfigEntry<bool> UnlockBothModSlots { get; private set; }
+    internal static ConfigEntry<bool> InstantRestaurantUpgrades { get; private set; }
+    internal static ConfigEntry<bool> InstantBrew { get; private set; }
+    internal static ConfigEntry<bool> ModifyPlayerMaxHp { get; private set; }
+    internal static ConfigEntry<float> ModifyPlayerMaxHpMultiplier { get; private set; }
+    internal static ConfigEntry<bool> RegenPlayerHp { get; private set; }
+    internal static ConfigEntry<int> RegenPlayerHpAmount { get; private set; }
+    internal static ConfigEntry<float> RegenPlayerHpTick { get; private set; }
+    internal static ConfigEntry<bool> RegenPlayerHpShowFloatingText { get; private set; }
+
+
     private static ConfigEntry<int> AutoSaveFrequency { get; set; }
-    private static int MaxRefresh => Screen.resolutions.Max(a => a.refreshRate);
+    internal static int MaxRefresh => Screen.resolutions.Max(a => a.refreshRate);
 
     private static int TimeScale => FindLowestFrameRateMultipleAboveFifty(MaxRefresh);
+
+    internal static Dictionary<BaseItemSO, int> OriginalItemStackSizes { get; } = new();
 
     private static int FindLowestFrameRateMultipleAboveFifty(int originalRate)
     {
@@ -47,19 +68,60 @@ public class Plugin : BasePlugin
     public override void Load()
     {
         Logger = Log;
-        CorrectFixedUpdateRate = Config.Bind("01. General", "CorrectFixedUpdateRate", true,
-            new ConfigDescription("Correct the fixed update rate to the lowest multiple of the refresh rate above 50."));
-        UseRefreshRateForFixedUpdateRate = Config.Bind("01. General", "UseRefreshRateForFixedUpdateRate", true,
-            new ConfigDescription("Use the refresh rate for the fixed update rate. If false, the fixed update rate will be lowest multiple of the refresh rate above 50."));
-        InstantText = Config.Bind("01. General", "InstantText", true,
-            new ConfigDescription("Instantly show all text in cutscenes."));
-        IncreaseStackSize = Config.Bind("01. General", "IncreaseStackSize", true,
-            new ConfigDescription("Increase stack size to 999."));
-        EnableAutoSave = Config.Bind("01. General", "EnableAutoSave", true,
-            new ConfigDescription("Enable auto save."));
-        EnableAutoSave.SettingChanged += (_, _) => UpdateAutoSave();
-        AutoSaveFrequency = Config.Bind("01. General", "AutoSaveFrequency", 300, new ConfigDescription("Auto save frequency in seconds.", new AcceptableValueRange<int>(30, 600)));
-        AutoSaveFrequency.SettingChanged += (_, _) => UpdateAutoSave();
+// Group 1: Performance Settings
+        CorrectFixedUpdateRate = Config.Bind("01. Performance", "CorrectFixedUpdateRate", true,
+            new ConfigDescription("Adjusts the fixed update rate to minimum amount to reduce camera judder based on your refresh rate."));
+        UseRefreshRateForFixedUpdateRate = Config.Bind("01. Performance", "UseRefreshRateForFixedUpdateRate", false,
+            new ConfigDescription("Sets the fixed update rate based on the monitor's refresh rate for smoother gameplay. If you're playing on a potato, this may have performance impacts."));
+
+// Group 2: User Interface Enhancements
+        InstantText = Config.Bind("02. User Interface", "InstantDialogueText", true,
+            new ConfigDescription("Dialogue text is instantly displayed, skipping the typewriter effect."));
+
+// Group 3: Inventory Management
+        IncreaseStackSize = Config.Bind("03. Inventory", "IncreaseStackSize", true,
+            new ConfigDescription("Enables increasing the item stack size, allowing for more efficient inventory management."));
+        IncreaseStackSizeValue = Config.Bind("03. Inventory", "IncreaseStackSizeValue", 999,
+            new ConfigDescription("Determines the maximum number of items in a single stack.", new AcceptableValueRange<int>(1, 999)));
+
+// Group 4: Save System Customization
+        EnableAutoSave = Config.Bind("04. Save System", "EnableAutoSave", true,
+            new ConfigDescription("Activates the auto-save feature, automatically saving game progress at set intervals."));
+        AutoSaveFrequency = Config.Bind("04. Save System", "AutoSaveFrequency", 300,
+            new ConfigDescription("Sets the frequency of auto-saves in seconds.", new AcceptableValueRange<int>(30, 600)));
+
+        LoadToSaveMenu = Config.Bind("04. Save System", "LoadToSaveMenu", true,
+            new ConfigDescription("Changes the initial game load screen to the save menu, streamlining the game start."));
+        AutoLoadSpecifiedSave = Config.Bind("04. Save System", "AutoLoadSpecifiedSave", false,
+            new ConfigDescription("Automatically loads a pre-selected save slot when starting the game."));
+        AutoLoadSpecifiedSaveSlot = Config.Bind("04. Save System", "AutoLoadSpecifiedSaveSlot", 1,
+            new ConfigDescription("Determines which save slot to auto-load.", new AcceptableValueRange<int>(1, 5)));
+
+// Group 5: Gameplay Enhancements
+        PauseTimeWhenViewingInventories = Config.Bind("05. Gameplay", "PauseTimeWhenViewingInventories", true,
+            new ConfigDescription("Pauses the game when accessing inventory screens, excluding cooking interfaces."));
+        UnlockBothModSlots = Config.Bind("05. Gameplay", "UnlockBothModSlots", false,
+            new ConfigDescription("Both mod slots on gears/weapons remain unlocked."));
+        InstantRestaurantUpgrades = Config.Bind("05. Gameplay", "InstantRestaurantUpgrades", false,
+            new ConfigDescription("Allows for immediate upgrades to the restaurant, bypassing build times."));
+        InstantBrew = Config.Bind("05. Gameplay", "InstantBrew", false,
+            new ConfigDescription("Enables instant brewing processes, eliminating the usual brewing duration."));
+
+// Group 6: Player Health Customization
+        ModifyPlayerMaxHp = Config.Bind("06. Player Health", "ModifyPlayerMaxHp", false,
+            new ConfigDescription("Enables the modification of the player's maximum health."));
+        ModifyPlayerMaxHpMultiplier = Config.Bind("06. Player Health", "ModifyPlayerMaxHpMultiplier", 1.25f,
+            new ConfigDescription("Sets the multiplier for the player's maximum health. 1.25 would be 25% more health.", new AcceptableValueList<float>(0.5f, 1.25f, 1.5f, 1.75f, 2f)));
+        RegenPlayerHp = Config.Bind("06. Player Health", "RegenPlayerHp", true,
+            new ConfigDescription("Activates health regeneration for the player, gradually restoring health over time."));
+        RegenPlayerHpAmount = Config.Bind("06. Player Health", "RegenPlayerHpAmount", 1,
+            new ConfigDescription("Specifies the amount of health regenerated per tick.", new AcceptableValueList<int>(1, 2, 3, 4, 5)));
+        RegenPlayerHpTick = Config.Bind("06. Player Health", "RegenPlayerHpTick", 3f,
+            new ConfigDescription("Determines the time interval in seconds for each health regeneration tick.", new AcceptableValueList<float>(1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f)));
+        RegenPlayerHpShowFloatingText = Config.Bind("06. Player Health", "RegenPlayerHpShowFloatingText", true,
+            new ConfigDescription("Displays a floating text notification during health regeneration."));
+
+
         SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>) OnSceneLoaded;
 
         Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginGuid);
@@ -70,17 +132,32 @@ public class Plugin : BasePlugin
     private static void OnSceneLoaded(Scene arg0, LoadSceneMode arg1)
     {
         Logger.LogInfo($"Scene loaded: {arg0.name}: Running Fixes");
-        Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, true, MaxRefresh);
+        Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow, MaxRefresh);
         Logger.LogInfo($"Set resolution to {Screen.currentResolution}");
 
-        Application.targetFrameRate = MaxRefresh;
-        Logger.LogInfo($"Set targetFrameRate to {Application.targetFrameRate}.");
+        if (Application.targetFrameRate != MaxRefresh)
+        {
+            Application.targetFrameRate = MaxRefresh;
+            Logger.LogInfo($"Set targetFrameRate to {Application.targetFrameRate}.");
+        }
+        else
+        {
+            Logger.LogInfo($"targetFrameRate is already {Application.targetFrameRate}. No update necessary.");
+        }
 
         if (CorrectFixedUpdateRate.Value)
         {
+            var originalTime = Time.fixedDeltaTime;
             var scale = UseRefreshRateForFixedUpdateRate.Value ? MaxRefresh : TimeScale;
-            Time.fixedDeltaTime = 1f / scale;
-            Logger.LogInfo($"Set fixedDeltaTime to {Time.fixedDeltaTime} ({scale}).");
+            var newValue = 1f / scale;
+            if (Mathf.Approximately(newValue, originalTime))
+            {
+                Logger.LogInfo($"fixedDeltaTime is already {newValue} ({scale}fps). No update necessary.");
+                return;
+            }
+
+            Time.fixedDeltaTime = newValue;
+            Logger.LogInfo($"Set fixedDeltaTime to {newValue} ({scale}fps). Original is {originalTime} ({Mathf.Round(1f / originalTime)}fps).");
         }
 
         UpdateAutoSave();
@@ -89,33 +166,51 @@ public class Plugin : BasePlugin
 
     private static void UpdateInventoryStackSize()
     {
-        if (InventoryManager.Instance == null) return;
+        if (InventoryManager.m_Instance == null) return;
+
         var s = new Stopwatch();
         s.Start();
         Logger.LogInfo("Updating Inventory Stack Sizes");
         var count = 0;
         foreach (var instanceMInventory in InventoryManager.Instance.m_Inventories)
         {
-            if (instanceMInventory is {Value: null}) continue;
+            if (instanceMInventory.Value == null) continue;
+
             foreach (var valueMSlot in instanceMInventory.Value.m_Slots)
             {
-                if (valueMSlot == null || valueMSlot.ItemSO == null) continue;
-                valueMSlot.ItemSO.m_MaxStack = 999;
+                if (valueMSlot?.ItemSO == null) continue;
+
+                if (!OriginalItemStackSizes.TryGetValue(valueMSlot.ItemSO, out var maxStack))
+                {
+                    maxStack = valueMSlot.ItemSO.m_MaxStack;
+                    OriginalItemStackSizes[valueMSlot.ItemSO] = maxStack;
+                }
+
+                if (IncreaseStackSizeValue.Value <= maxStack)
+                {
+                    Logger.LogInfo($"Item {valueMSlot.ItemSO.name} already has a stack size of {maxStack}.");
+                    continue;
+                }
+
+                valueMSlot.ItemSO.m_MaxStack = IncreaseStackSizeValue.Value;
                 count++;
             }
         }
+
         s.Stop();
         Logger.LogInfo($"Updated {count} item's stack sizes in {s.ElapsedMilliseconds}ms, {s.ElapsedTicks} ticks");
     }
 
+
     private static void UpdateAutoSave()
     {
-        if (CuisineerSaveManager.Instance == null) return;
+        if (CuisineerSaveManager.m_Instance == null) return;
         Logger.LogInfo("Initiating AutoSave");
         CuisineerSaveManager.Instance.m_AutoSave = EnableAutoSave.Value;
         CuisineerSaveManager.Instance.m_AutoSaveFrequency = AutoSaveFrequency.Value;
         Logger.LogInfo($"AutoSave: {CuisineerSaveManager.Instance.m_AutoSave} ({CuisineerSaveManager.Instance.m_AutoSaveFrequency / 60f} minutes)");
     }
+
 
     public class UnityEvents : MonoBehaviour
     {
@@ -126,11 +221,14 @@ public class Plugin : BasePlugin
 
         private void Update()
         {
-            if (CuisineerInputWrapper.GetGameActionKeyUp(BattlebrewGameAction.DebugK))
+            if (CuisineerSaveManager.m_Instance != null && CuisineerInputWrapper.GetGameActionKeyUp(BattlebrewGameAction.DebugK))
             {
                 CuisineerSaveManager.SaveCurrent();
                 Logger.LogInfo("Saved current game.");
             }
+
+            if (TimeManager.m_Instance == null || !PauseTimeWhenViewingInventories.Value) return;
+            TimeManager.ToggleTimePause(UI_InventoryViewBase.AnyInventoryActive);
         }
     }
 }
