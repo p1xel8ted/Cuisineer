@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using HarmonyLib;
+using Il2CppInterop.Runtime;
 using UnityEngine;
 
 namespace CuisineerTweaks;
@@ -12,6 +14,7 @@ public static class Patches
 {
     private const string UpgradeDateRestaurant = "UPGRADE_DATE_RESTAURANT";
     private const string BattleBrewProductions = "BattleBrew Productions";
+    private const string Recall = "Recall";
     private static RestaurantExt RestaurantExtInstance { get; set; }
     private static float NextRegen { get; set; }
 
@@ -59,6 +62,69 @@ public static class Patches
         RestaurantExtInstance ??= __instance;
     }
 
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Player), nameof(Player.LateUpdate))]
+    public static void Player_OnEnable(ref Player __instance)
+    {
+        if (!Plugin.IncreasePlayerMoveSpeed.Value) return;
+        __instance.m_RuntimeData.m_MovementModifier = Plugin.PlayerMoveSpeedValue.Value;
+        __instance.m_AnimHandler.Anim.speed = Plugin.PlayerMoveSpeedValue.Value;
+    }
+    
+    // [HarmonyPostfix]
+    // [HarmonyPatch(typeof(PlayerRuntimeData), nameof(PlayerRuntimeData.TriggerAnimation), typeof(string))]
+    // public static void PlayerRuntimeData_TriggerAnimation(ref PlayerRuntimeData __instance, string triggerName)
+    // {
+    //     if (!triggerName.Equals(Recall)) return;
+    //     __instance.SetAnimatorSpeed(20);
+    // }
+    //
+    // [HarmonyPostfix]
+    // [HarmonyPatch(typeof(Animator), nameof(Animator.SetTrigger), typeof(string))]
+    // public static void Animator_SetTrigger(ref Animator __instance, string name)
+    // {
+    //     if (!name.Equals(Recall)) return;
+    //     Plugin.Logger.LogInfo($"Recall animation triggered! Current speed: {__instance.speed}");
+    //     __instance.playbackTime /= 10f;
+    // }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(Customer), nameof(Customer.FixedUpdate))]
+    public static void Customer_FixedUpdate(ref Customer __instance)
+    {
+        if (!Plugin.IncreaseCustomerMoveSpeed.Value) return;
+
+        var newSpeed = __instance.Data.m_MovementSpeed * Plugin.CustomerMoveSpeedValue.Value;
+        __instance.m_Agent.speed = newSpeed;
+        __instance.m_Agent.maxSpeed = newSpeed;
+
+        if (Plugin.IncreaseCustomerMoveSpeedAnimation.Value)
+        {
+            __instance.m_WalkSpeedAnimMultiplier = newSpeed;
+        }
+    }
+
+
+#if DEBUG
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(ShopInventory), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(Cost), typeof(int), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAffordMaterials))]
+    public static void CurrencyManager_CanAfford(ref bool __result)
+    {
+        __result = true;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.Spend), typeof(Cost), typeof(int), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.Spend), typeof(ShopInventory), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.SpendCoins))]
+    public static bool CurrencyManager_Spend()
+    {
+        return false;
+    }
+#endif
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(UI_BrewArea), nameof(UI_BrewArea.EnterBrew))]
@@ -71,14 +137,10 @@ public static class Patches
         __instance.SwitchState(UI_BrewArea.Stage.Claim);
     }
 
-    // internal static UI_MainMenu MainMenuInstance { get; set; }
-
     [HarmonyPostfix]
     [HarmonyPatch(typeof(UI_MainMenu), nameof(UI_MainMenu.HandleDependenciesReady))]
     public static void UI_MainMenu_Awake(ref UI_MainMenu __instance)
     {
-        // MainMenuInstance ??= __instance;
-    
         __instance.m_FadeDuration = 0f;
         __instance.m_CreditBtn.gameObject.SetActive(false);
         __instance.m_QuitGameBtn.transform.localPosition = __instance.m_CreditBtn.transform.localPosition;
@@ -127,12 +189,11 @@ public static class Patches
             __instance.Heal(Plugin.RegenPlayerHpAmount.Value, !Plugin.RegenPlayerHpShowFloatingText.Value);
         }
     }
-    
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(GUI), nameof(GUI.Label), typeof(Rect), typeof(string), typeof(GUIStyle))]
     public static void GUI_Label(ref Rect position, ref string text, ref GUIStyle style)
     {
-  
         var version = Application.version;
         var versionText = "v" + version;
         if (text.Contains(versionText, StringComparison.OrdinalIgnoreCase))
@@ -140,10 +201,8 @@ public static class Patches
             style.alignment = TextAnchor.UpperLeft;
             position.y -= 17;
             style.wordWrap = true;
-            text += $"{Environment.NewLine}Cuisineer Tweaks v{Plugin.PluginVersion}"; 
+            text += $"{Environment.NewLine}Cuisineer Tweaks v{Plugin.PluginVersion}";
         }
-    
-      
     }
 
 
