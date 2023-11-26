@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using HarmonyLib;
-using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Il2CppSystem;
 using UnityEngine;
+using Environment = System.Environment;
+using StringComparison = System.StringComparison;
 
 namespace CuisineerTweaks;
 
@@ -13,10 +14,40 @@ namespace CuisineerTweaks;
 public static class Patches
 {
     private const string UpgradeDateRestaurant = "UPGRADE_DATE_RESTAURANT";
-    private const string BattleBrewProductions = "BattleBrew Productions";
-    private const string Recall = "Recall";
+
     private static RestaurantExt RestaurantExtInstance { get; set; }
     private static float NextRegen { get; set; }
+
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.Clone))]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.CloneWithCount))]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.CloneWithMods), typeof(Il2CppReferenceArray<ItemModSO>))]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.Insert))]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.Insert_IgnoreMaxStack))]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.Merge))]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.Remove))]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.SameAs))]
+    [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.SplitOutStack))]
+    public static void ItemInstance_Patches(ref ItemInstance __instance)
+    {
+        Fixes.UpdateItemStackSize(__instance);
+    }
+
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(UI_EquippedSlot_Belt), nameof(UI_EquippedSlot_Belt.SetupUI))]
+    public static void UI_EquippedSlot_Belt_SetupUI(ref UI_EquippedSlot_Belt __instance, ref ItemInstance data)
+    {
+        Fixes.UpdateWeaponCooldowns();
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.Sort))]
+    public static void Inventory_Sort()
+    {
+        Fixes.UpdateInventoryStackSize();
+    }
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Inventory), nameof(Inventory.InsertHelper))]
@@ -24,20 +55,7 @@ public static class Patches
     {
         if (!Plugin.IncreaseStackSize.Value || item == null) return;
 
-        if (!Plugin.OriginalItemStackSizes.TryGetValue(item.ItemSO, out var maxStack))
-        {
-            maxStack = item.ItemSO.m_MaxStack;
-            Plugin.OriginalItemStackSizes[item.ItemSO] = maxStack;
-        }
-
-        if (Plugin.IncreaseStackSizeValue.Value > maxStack)
-        {
-            item.ItemSO.m_MaxStack = Plugin.IncreaseStackSizeValue.Value;
-        }
-        else
-        {
-            Plugin.Logger.LogWarning($"Inventory.InsertHelper: Tried to increase stack size of {item.ItemSO.name} to {Plugin.IncreaseStackSizeValue.Value}, but it's already {maxStack}!");
-        }
+        Fixes.UpdateItemStackSize(item);
     }
 
     [HarmonyPostfix]
@@ -70,23 +88,7 @@ public static class Patches
         __instance.m_RuntimeData.m_MovementModifier = Plugin.PlayerMoveSpeedValue.Value;
         __instance.m_AnimHandler.Anim.speed = Plugin.PlayerMoveSpeedValue.Value;
     }
-    
-    // [HarmonyPostfix]
-    // [HarmonyPatch(typeof(PlayerRuntimeData), nameof(PlayerRuntimeData.TriggerAnimation), typeof(string))]
-    // public static void PlayerRuntimeData_TriggerAnimation(ref PlayerRuntimeData __instance, string triggerName)
-    // {
-    //     if (!triggerName.Equals(Recall)) return;
-    //     __instance.SetAnimatorSpeed(20);
-    // }
-    //
-    // [HarmonyPostfix]
-    // [HarmonyPatch(typeof(Animator), nameof(Animator.SetTrigger), typeof(string))]
-    // public static void Animator_SetTrigger(ref Animator __instance, string name)
-    // {
-    //     if (!name.Equals(Recall)) return;
-    //     Plugin.Logger.LogInfo($"Recall animation triggered! Current speed: {__instance.speed}");
-    //     __instance.playbackTime /= 10f;
-    // }
+
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Customer), nameof(Customer.FixedUpdate))]
@@ -104,37 +106,84 @@ public static class Patches
         }
     }
 
-
-#if DEBUG
     [HarmonyPostfix]
-    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(int))]
-    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(ShopInventory), typeof(int))]
-    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(Cost), typeof(int), typeof(int))]
-    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAffordMaterials))]
-    public static void CurrencyManager_CanAfford(ref bool __result)
+    [HarmonyPatch(typeof(UI_WeaponUpgrade), nameof(UI_WeaponUpgrade.ToggleClaimMode))]
+    public static void UI_WeaponUpgrade_ToggleClaimMode(ref UI_WeaponUpgrade __instance)
     {
-        __result = true;
+        if (!Plugin.InstantWeaponUpgrades.Value) return;
+        __instance.ClaimEquipment();
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.Setup), typeof(ItemInstance), typeof(Vector3), typeof(float), typeof(float), typeof(float), typeof(float))]
+    public static void ItemDropManager_PickupItem(ref ItemDrop __instance)
+    {
+        if (!Plugin.ItemDropMultiplier.Value) return;
+        if (__instance == null || __instance.m_ItemInstance == null) return;
+        __instance.m_ItemInstance.m_Stack = Mathf.RoundToInt(__instance.m_ItemInstance.m_Stack * Plugin.ItemDropMultiplierValue.Value);
     }
 
     [HarmonyPrefix]
-    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.Spend), typeof(Cost), typeof(int), typeof(int))]
-    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.Spend), typeof(ShopInventory), typeof(int))]
-    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.SpendCoins))]
-    public static bool CurrencyManager_Spend()
+    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.HandleCollision))]
+    public static void BaseAttack_HandleCollision(ref BaseAttack __instance, ref Collider collider)
     {
-        return false;
+        if (!Plugin.OneHitDestructible.Value) return;
+        if (__instance == null || collider == null) return;
+        var prop = collider.GetComponent<Prop>();
+        if (prop == null) return;
+
+        const int maxIterations = 10;
+        for (var i = 0; i < maxIterations; i++)
+        {
+            __instance.HandleHitDestructible(prop);
+        }
     }
-#endif
+
+    [HarmonyFinalizer]
+    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.HandleCollision))]
+    public static Exception Finalizer()
+    {
+        return null;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.Update))]
+    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.FixedUpdate))]
+    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.FixedUpdate_ChainAttack))]
+    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.FixedUpdate_ActiveNestedAttacks))]
+    public static void BaseAttack_Update(ref BaseAttack __instance)
+    {
+        if (!Plugin.RemoveChainAttackDelay.Value) return;
+        if (!__instance._IsPlayer_k__BackingField) return;
+        __instance.m_ActiveNestedAttInterval = 0f;
+        __instance.m_CurActiveNestedAttInterval = 0f;
+        __instance.m_ChainAttDelay = 0f;
+        __instance.m_ActiveFXDelay = 0f;
+        __instance.m_ActiveNestedAttDelay = 0f;
+        __instance.m_CurrChainAttackDelay = 0f;
+        __instance.m_RandAddActiveDelay = 0f;
+        __instance.m_ActiveDelayTimer = 0f;
+        __instance.m_CurActiveNestedAttDelay = 0f;
+        __instance.m_ActiveFXDelayTimer = 0f;
+        __instance.m_ActiveDelayTime = 0f;
+    }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(UI_BrewArea), nameof(UI_BrewArea.EnterBrew))]
     public static void UI_BrewArea_EnterBrew(ref UI_BrewArea __instance)
     {
         if (!Plugin.InstantBrew.Value) return;
-        var brewConfirmationData = __instance.m_BrewConfirmationData;
-        var currDate = SimpleSingleton<CalendarManager>.Instance.CurrDate;
-        brewConfirmationData.m_BrewDate = currDate - 2;
+        Utils.FastForwardBrewCraft(__instance.m_BrewConfirmationData);
         __instance.SwitchState(UI_BrewArea.Stage.Claim);
+    }
+    
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(UI_BrewArea), nameof(UI_BrewArea.Show))]
+    public static void UI_BrewArea_Show(ref UI_BrewArea __instance)
+    {
+        if (!Plugin.InstantBrew.Value) return;
+        Utils.FastForwardBrewCraft(__instance.m_BrewConfirmationData);
     }
 
     [HarmonyPostfix]
@@ -174,7 +223,7 @@ public static class Patches
         var originalHP = __result;
         var newHP = originalHP * Plugin.ModifyPlayerMaxHpMultiplier.Value;
         __result = Mathf.RoundToInt(newHP);
-        Plugin.Logger.LogInfo($"Player.GetMaxHP: Player max HP: {originalHP} -> {newHP} ({Plugin.ModifyPlayerMaxHpMultiplier.Value}x)");
+        Utils.WriteLog($"Player.GetMaxHP: Player max HP: {originalHP} -> {newHP} ({Plugin.ModifyPlayerMaxHpMultiplier.Value}x)");
     }
 
     [HarmonyPostfix]
@@ -229,7 +278,7 @@ public static class Patches
     [HarmonyPatch(typeof(LoadingScreenProgressComponent), nameof(LoadingScreenProgressComponent.OnDisable))]
     public static void LoadingScreenProgressComponent_OnDisable()
     {
-        Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow, Plugin.MaxRefresh);
+        Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow, Fixes.MaxRefresh);
     }
 
     [HarmonyPrefix]
@@ -245,9 +294,31 @@ public static class Patches
         if (!resDatas.Exists(a => a.m_Height == Display._mainDisplay.systemHeight && a.m_Width == Display._mainDisplay.systemWidth))
         {
             resDatas.Add(myResData);
-            Plugin.Logger.LogInfo($"Main display resolution not detected; added {myResData.m_Width}x{myResData.m_Height} to resolution list");
+            Utils.WriteLog($"Main display resolution not detected; added {myResData.m_Width}x{myResData.m_Height} to resolution list");
         }
 
         UI_GameplayOptions.ResolutionDatas = resDatas.ToArray();
     }
+
+
+#if DEBUG
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(ShopInventory), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAfford), typeof(Cost), typeof(int), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.CanAffordMaterials))]
+    public static void CurrencyManager_CanAfford(ref bool __result)
+    {
+        __result = true;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.Spend), typeof(Cost), typeof(int), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.Spend), typeof(ShopInventory), typeof(int))]
+    [HarmonyPatch(typeof(CurrencyManager), nameof(CurrencyManager.SpendCoins))]
+    public static bool CurrencyManager_Spend()
+    {
+        return false;
+    }
+#endif
 }

@@ -1,16 +1,11 @@
-﻿using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
+﻿using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
-using Il2CppSystem.Collections.Generic;
-using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 namespace CuisineerTweaks;
 
@@ -20,64 +15,55 @@ public class Plugin : BasePlugin
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
     internal const string PluginVersion = "0.1.6";
-    internal static ManualLogSource Logger { get; private set; }
 
-    private static ConfigEntry<bool> CorrectMainMenuAspect { get; set; }
-    private static ConfigEntry<bool> CorrectFixedUpdateRate { get; set; }
-    private static ConfigEntry<bool> UseRefreshRateForFixedUpdateRate { get; set; }
+    internal static ManualLogSource Logger { get; private set; }
+    internal static ConfigEntry<bool> CorrectMainMenuAspect { get; private set; }
+    internal static ConfigEntry<bool> CorrectFixedUpdateRate { get; private set; }
+    internal static ConfigEntry<bool> UseRefreshRateForFixedUpdateRate { get; private set; }
     internal static ConfigEntry<bool> IncreaseStackSize { get; private set; }
     internal static ConfigEntry<int> IncreaseStackSizeValue { get; private set; }
     internal static ConfigEntry<bool> InstantText { get; private set; }
-    private static ConfigEntry<bool> EnableAutoSave { get; set; }
-
+    internal static ConfigEntry<bool> EnableAutoSave { get; private set; }
     internal static ConfigEntry<bool> LoadToSaveMenu { get; private set; }
     internal static ConfigEntry<bool> AutoLoadSpecifiedSave { get; private set; }
     internal static ConfigEntry<int> AutoLoadSpecifiedSaveSlot { get; private set; }
-
-    private static ConfigEntry<bool> PauseTimeWhenViewingInventories { get; set; }
+    internal static ConfigEntry<bool> PauseTimeWhenViewingInventories { get; private set; }
     internal static ConfigEntry<bool> UnlockBothModSlots { get; private set; }
     internal static ConfigEntry<bool> InstantRestaurantUpgrades { get; private set; }
     internal static ConfigEntry<bool> InstantBrew { get; private set; }
+    internal static ConfigEntry<bool> InstantWeaponUpgrades { get; private set; }
+    internal static ConfigEntry<bool> ItemDropMultiplier { get; private set; }
+    internal static ConfigEntry<int> ItemDropMultiplierValue { get; private set; }
     internal static ConfigEntry<bool> ModifyPlayerMaxHp { get; private set; }
     internal static ConfigEntry<float> ModifyPlayerMaxHpMultiplier { get; private set; }
     internal static ConfigEntry<bool> RegenPlayerHp { get; private set; }
     internal static ConfigEntry<int> RegenPlayerHpAmount { get; private set; }
     internal static ConfigEntry<float> RegenPlayerHpTick { get; private set; }
     internal static ConfigEntry<bool> RegenPlayerHpShowFloatingText { get; private set; }
-
-    private static ConfigEntry<bool> AutomaticPayment { get; set; }
-
+    internal static ConfigEntry<bool> AutomaticPayment { get; private set; }
     internal static ConfigEntry<bool> IncreaseCustomerMoveSpeed { get; private set; }
     internal static ConfigEntry<bool> IncreaseCustomerMoveSpeedAnimation { get; private set; }
     internal static ConfigEntry<float> CustomerMoveSpeedValue { get; private set; }
-
     internal static ConfigEntry<bool> IncreasePlayerMoveSpeed { get; private set; }
     internal static ConfigEntry<float> PlayerMoveSpeedValue { get; private set; }
-    
-    private static ConfigEntry<int> AutoSaveFrequency { get; set; }
-    internal static int MaxRefresh => Screen.resolutions.Max(a => a.refreshRate);
-
-    private static int TimeScale => FindLowestFrameRateMultipleAboveFifty(MaxRefresh);
-
-    internal static Dictionary<BaseItemSO, int> OriginalItemStackSizes { get; } = new();
-
-    private static int FindLowestFrameRateMultipleAboveFifty(int originalRate)
-    {
-        // Start from half of the original rate and decrement by one to find the highest multiple above 50.
-        for (var rate = originalRate / 2; rate > 50; rate--)
-        {
-            if (originalRate % rate == 0)
-            {
-                return rate;
-            }
-        }
-
-        // Fallback, though this scenario is unlikely with standard monitor refresh rates
-        return originalRate;
-    }
+    internal static ConfigEntry<int> AutoSaveFrequency { get; private set; }
+    internal static ConfigEntry<bool> RemoveChainAttackDelay { get; private set; }
+    internal static ConfigEntry<bool> AutoCook { get; private set; }
+    internal static ConfigEntry<bool> FreeCook { get; private set; }
+    internal static ConfigEntry<bool> InstantKill { get; private set; }
+    internal static ConfigEntry<bool> DineAndDash { get; private set; }
+    internal static ConfigEntry<bool> ModifyWeaponSpecialCooldown { get; private set; }
+    internal static ConfigEntry<float> WeaponSpecialCooldownValue { get; private set; }
+    internal static ConfigEntry<bool> DebugMode { get; private set; }
+    internal static Plugin Instance { get; private set; }
+    internal static ConfigEntry<bool> OneHitDestructible { get; private set; }
 
     private void InitConfig()
     {
+        // Group 0: General Settings
+        DebugMode = Config.Bind("00. General", "DebugMode", false,
+            new ConfigDescription("Enables debug mode, which enables more verbose logging. This is not recommended for normal use."));
+
         // Group 1: Performance Settings
         CorrectFixedUpdateRate = Config.Bind("01. Performance", "CorrectFixedUpdateRate", true,
             new ConfigDescription("Adjusts the fixed update rate to minimum amount to reduce camera judder based on your refresh rate."));
@@ -118,6 +104,12 @@ public class Plugin : BasePlugin
             new ConfigDescription("Allows for immediate upgrades to the restaurant, bypassing build times."));
         InstantBrew = Config.Bind("05. Gameplay", "InstantBrew", false,
             new ConfigDescription("Enables instant brewing processes, eliminating the usual brewing duration."));
+        InstantWeaponUpgrades = Config.Bind("05. Gameplay", "InstantWeaponUpgrades", false,
+            new ConfigDescription("Enables instant weapon upgrades, eliminating the usual upgrade duration."));
+        ItemDropMultiplier = Config.Bind("05. Gameplay", "ItemDropMultiplier", false,
+            new ConfigDescription("Enables the modification of item drop rates."));
+        ItemDropMultiplierValue = Config.Bind("05. Gameplay", "ItemDropMultiplierValue", 2,
+            new ConfigDescription("Sets the multiplier for item drop rates. At the moment, basically sets stack size on drop.", new AcceptableValueList<int>(2, 3, 4, 5, 6)));
 
         // Group 6: Player Health Customization
         ModifyPlayerMaxHp = Config.Bind("06. Player Health", "ModifyPlayerMaxHp", false,
@@ -136,9 +128,9 @@ public class Plugin : BasePlugin
         //Group 7: Player Movement
         IncreasePlayerMoveSpeed = Config.Bind("07. Player Movement", "IncreasePlayerMoveSpeed", false,
             new ConfigDescription("Increases the speed of the player."));
-        PlayerMoveSpeedValue = Config.Bind("07. Player Movement", "PlayerMoveSpeedValue", 1.25f, 
+        PlayerMoveSpeedValue = Config.Bind("07. Player Movement", "PlayerMoveSpeedValue", 1.25f,
             new ConfigDescription("Determines the speed of the player. Good luck playing at 5.", new AcceptableValueRange<float>(1.10f, 5f)));
-        
+
         // Group 8: Restaurant Management
         AutomaticPayment = Config.Bind("08. Restaurant", "AutomaticPayment", false,
             new ConfigDescription("Automatically accept payment for customer."));
@@ -148,9 +140,28 @@ public class Plugin : BasePlugin
             new ConfigDescription("Increases the speed of customers move animation. Test it out, see how you go."));
         CustomerMoveSpeedValue = Config.Bind("08. Restaurant", "CustomerMoveSpeedValue", 1.25f,
             new ConfigDescription("Determines the speed of customers. Setting too high will cause momentum issues.", new AcceptableValueRange<float>(1.10f, 5f)));
+        DineAndDash = Config.Bind("08. Restaurant", "DineAndDash", false,
+            new ConfigDescription("Toggle the Dine & Dash mechanic."));
+
+        //Group 9: Attacks/Damage
+        RemoveChainAttackDelay = Config.Bind("09. Attacks/Damage", "RemoveChainAttackDelay", false,
+            new ConfigDescription("Removes the delay for chain attacks. So instead of [swing..swing.....big swing] it becomes, [swing..swing..big swing]. Or that's the idea. It's very subtle, as the delay is only half a second anyway."));
+        ModifyWeaponSpecialCooldown = Config.Bind("09. Attacks/Damage", "ModifyWeaponSpecialCooldown", false,
+            new ConfigDescription("Modify the cooldown for weapon special attacks."));
+        WeaponSpecialCooldownValue = Config.Bind("09. Attacks/Damage", "WeaponSpecialCooldownValue", 25f,
+            new ConfigDescription("Set the cooldown for weapon special attacks. 25 is 25% shorter. 12sec would become 9sec.", new AcceptableValueRange<float>(10f, 90f)));
+        OneHitDestructible = Config.Bind("09. Attacks/Damage", "OneHitDestructible", false,
+            new ConfigDescription("One hit destructible objects. Like the rocks/trees etc."));
+
+        //Group 10: Cheats
+        AutoCook = Config.Bind("10. Cheats", "AutoCook", false,
+            new ConfigDescription("Automatically cook food. !!WARNING!! - THIS WILL CAUSE ALL(?) RECIPES TO UNLOCK AND POP THE APPROPRIATE ACHIEVEMENTS."));
+        FreeCook = Config.Bind("10. Cheats", "FreeCook", false,
+            new ConfigDescription("No ingredients required."));
+        InstantKill = Config.Bind("10. Cheats", "InstantKill", false,
+            new ConfigDescription("One hit kill enemies."));
     }
 
-    private static Plugin Instance { get; set; }
 
     public override void Load()
     {
@@ -159,165 +170,18 @@ public class Plugin : BasePlugin
         Config.ConfigReloaded += (_, _) =>
         {
             InitConfig();
-            Logger.LogInfo("Reloaded configuration.");
+            Utils.WriteLog("Reloaded configuration.", true);
+            Fixes.RunFixes(string.Empty, true);
         };
         InitConfig();
         SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>) OnSceneLoaded;
         Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginGuid);
-        Logger.LogInfo($"Plugin {PluginGuid} is loaded!");
         AddComponent<UnityEvents>();
+        Utils.WriteLog($"Plugin {PluginGuid} is loaded!", true);
     }
 
     private static void OnSceneLoaded(Scene arg0, LoadSceneMode arg1)
     {
-        Logger.LogInfo($"Scene loaded: {arg0.name}: Running Fixes");
-        Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow, MaxRefresh);
-        Logger.LogInfo($"Set resolution to {Screen.currentResolution}");
-
-        if (Application.targetFrameRate != MaxRefresh)
-        {
-            Application.targetFrameRate = MaxRefresh;
-            Logger.LogInfo($"Set targetFrameRate to {Application.targetFrameRate}.");
-        }
-        else
-        {
-            Logger.LogInfo($"targetFrameRate is already {Application.targetFrameRate}. No update necessary.");
-        }
-
-        if (CorrectFixedUpdateRate.Value)
-        {
-            var originalTime = Time.fixedDeltaTime;
-            var scale = UseRefreshRateForFixedUpdateRate.Value ? MaxRefresh : TimeScale;
-            var newValue = 1f / scale;
-            if (Mathf.Approximately(newValue, originalTime))
-            {
-                Logger.LogInfo($"fixedDeltaTime is already {newValue} ({scale}fps). No update necessary.");
-                return;
-            }
-
-            Time.fixedDeltaTime = newValue;
-            Logger.LogInfo($"Set fixedDeltaTime to {newValue} ({scale}fps). Original is {originalTime} ({Mathf.Round(1f / originalTime)}fps).");
-        }
-
-
-        UpdateAutoSave();
-        UpdateInventoryStackSize();
-
-        if (arg0.name.Equals("MainMenuScene"))
-        {
-            UpdateMainMenu();
-        }
-
-        Cheats.Customer.AutoCollectPayment = AutomaticPayment.Value;
-    }
-
-    private static void UpdateMainMenu()
-    {
-        if (!CorrectMainMenuAspect.Value) return;
-        const float baseAspect = 16f / 9f;
-        var currentAspect = Display.main.systemWidth / (float) Display.main.systemHeight;
-        if (currentAspect <= baseAspect) return;
-
-        var positiveScaleFactor = currentAspect / baseAspect;
-        var negativeScaleFactor = 1f / positiveScaleFactor;
-        Logger.LogInfo($"Current aspect ratio ({currentAspect}) is greater than base aspect ratio ({baseAspect}). Resizing UI elements.");
-
-        ScaleElement("UI_MainMenuCanvas/Mask", true);
-        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container", false, positiveScaleFactor);
-        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/Centre/MC", false, negativeScaleFactor);
-        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/Press any key text", false, negativeScaleFactor);
-        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/CuisineerLogo", false, negativeScaleFactor);
-        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/ButtonsBacking", false, negativeScaleFactor);
-        ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container/UI_SaveSlotDetail", false, negativeScaleFactor);
-    }
-
-    private static void ScaleElement(string path, bool maskCheck, float scaleFactor = 1f)
-    {
-        var element = GameObject.Find(path);
-        if (element == null) return;
-        if (maskCheck)
-        {
-            var maskComponent = element.GetComponent<Mask>();
-            if (maskComponent != null)
-            {
-                maskComponent.enabled = false;
-            }
-        }
-
-        element.transform.localScale = element.transform.localScale with {x = scaleFactor};
-    }
-
-
-    private static void UpdateInventoryStackSize()
-    {
-        if (InventoryManager.m_Instance == null) return;
-
-        var s = new Stopwatch();
-        s.Start();
-        Logger.LogInfo("Updating Inventory Stack Sizes");
-        var count = 0;
-        foreach (var instanceMInventory in InventoryManager.Instance.m_Inventories)
-        {
-            if (instanceMInventory.Value == null) continue;
-
-            foreach (var valueMSlot in instanceMInventory.Value.m_Slots)
-            {
-                if (valueMSlot?.ItemSO == null) continue;
-
-                if (!OriginalItemStackSizes.TryGetValue(valueMSlot.ItemSO, out var maxStack))
-                {
-                    maxStack = valueMSlot.ItemSO.m_MaxStack;
-                    OriginalItemStackSizes[valueMSlot.ItemSO] = maxStack;
-                }
-
-                if (IncreaseStackSizeValue.Value <= maxStack)
-                {
-                    Logger.LogInfo($"Item {valueMSlot.ItemSO.name} already has a stack size of {maxStack}.");
-                    continue;
-                }
-
-                valueMSlot.ItemSO.m_MaxStack = IncreaseStackSizeValue.Value;
-                count++;
-            }
-        }
-
-        s.Stop();
-        Logger.LogInfo($"Updated {count} item's stack sizes in {s.ElapsedMilliseconds}ms, {s.ElapsedTicks} ticks");
-    }
-
-
-    private static void UpdateAutoSave()
-    {
-        if (CuisineerSaveManager.m_Instance == null) return;
-        Logger.LogInfo("Initiating AutoSave");
-        CuisineerSaveManager.Instance.m_AutoSave = EnableAutoSave.Value;
-        CuisineerSaveManager.Instance.m_AutoSaveFrequency = AutoSaveFrequency.Value;
-        Logger.LogInfo($"AutoSave: {CuisineerSaveManager.Instance.m_AutoSave} ({CuisineerSaveManager.Instance.m_AutoSaveFrequency / 60f} minutes)");
-    }
-
-
-    public class UnityEvents : MonoBehaviour
-    {
-        private void Awake()
-        {
-            Logger.LogInfo("UnityEvents Awake");
-        }
-
-        private void Update()
-        {
-            if (CuisineerInputWrapper.GetGameActionKeyUp(BattlebrewGameAction.DebugR))
-            {
-                Instance.Config.Reload();
-            }
-
-            if (CuisineerSaveManager.m_Instance != null && CuisineerInputWrapper.GetGameActionKeyUp(BattlebrewGameAction.DebugK))
-            {
-                CuisineerSaveManager.SaveCurrent();
-                Logger.LogInfo("Saved current game.");
-            }
-
-            if (TimeManager.m_Instance == null || !PauseTimeWhenViewingInventories.Value) return;
-            TimeManager.ToggleTimePause(UI_InventoryViewBase.AnyInventoryActive);
-        }
+        Fixes.RunFixes(arg0.name);
     }
 }
