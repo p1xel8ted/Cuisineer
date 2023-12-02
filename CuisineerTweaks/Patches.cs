@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using HarmonyLib;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
@@ -95,6 +96,7 @@ public static class Patches
     public static void Customer_FixedUpdate(ref Customer __instance)
     {
         if (!Plugin.IncreaseCustomerMoveSpeed.Value) return;
+        if (__instance == null || __instance.Data == null || __instance.m_Agent == null) {return;}
 
         var newSpeed = __instance.Data.m_MovementSpeed * Plugin.CustomerMoveSpeedValue.Value;
         __instance.m_Agent.speed = newSpeed;
@@ -114,12 +116,14 @@ public static class Patches
         __instance.ClaimEquipment();
     }
 
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.Setup), typeof(ItemInstance), typeof(Vector3), typeof(float), typeof(float), typeof(float), typeof(float))]
     public static void ItemDropManager_PickupItem(ref ItemDrop __instance)
     {
         if (!Plugin.ItemDropMultiplier.Value) return;
         if (__instance == null || __instance.m_ItemInstance == null) return;
+        if (__instance.m_ItemInstance.m_ItemSO.Type is not (ItemType.Ingredient or ItemType.Potion or ItemType.Material)) return;
         __instance.m_ItemInstance.m_Stack = Mathf.RoundToInt(__instance.m_ItemInstance.m_Stack * Plugin.ItemDropMultiplierValue.Value);
     }
 
@@ -156,17 +160,8 @@ public static class Patches
     {
         if (!Plugin.RemoveChainAttackDelay.Value) return;
         if (!__instance._IsPlayer_k__BackingField) return;
-        __instance.m_ActiveNestedAttInterval = 0f;
-        __instance.m_CurActiveNestedAttInterval = 0f;
         __instance.m_ChainAttDelay = 0f;
-        __instance.m_ActiveFXDelay = 0f;
-        __instance.m_ActiveNestedAttDelay = 0f;
         __instance.m_CurrChainAttackDelay = 0f;
-        __instance.m_RandAddActiveDelay = 0f;
-        __instance.m_ActiveDelayTimer = 0f;
-        __instance.m_CurActiveNestedAttDelay = 0f;
-        __instance.m_ActiveFXDelayTimer = 0f;
-        __instance.m_ActiveDelayTime = 0f;
     }
 
     [HarmonyPostfix]
@@ -177,7 +172,7 @@ public static class Patches
         Utils.FastForwardBrewCraft(__instance.m_BrewConfirmationData);
         __instance.SwitchState(UI_BrewArea.Stage.Claim);
     }
-    
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(UI_BrewArea), nameof(UI_BrewArea.Show))]
     public static void UI_BrewArea_Show(ref UI_BrewArea __instance)
@@ -278,12 +273,89 @@ public static class Patches
     [HarmonyPatch(typeof(LoadingScreenProgressComponent), nameof(LoadingScreenProgressComponent.OnDisable))]
     public static void LoadingScreenProgressComponent_OnDisable()
     {
-        Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow, Fixes.MaxRefresh);
+        Fixes.UpdateResolutionFrameRate();
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(UI_Option), nameof(UI_Option.SetDropdownValue))]
+    public static void UI_Option_SetDropdownValue(string value)
+    {
+        Utils.UpdateResolutionData(Utils.GameplayOptionsInstance);
+    }
+
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.HandleSelectedResolution))]
+    public static void UI_GameplayOptions_HandleSelectedResolution(ref UI_GameplayOptions __instance)
+    {
+        Utils.UpdateResolutionData(__instance);
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.HandleSelectedFullscreenMode))]
+    public static void UI_GameplayOptions_HandleSelectedFullscreenMode(ref UI_GameplayOptions __instance)
+    {
+        Utils.UpdateResolutionData(__instance);
+    }
+
+    private static List<Furniture_CookingTool> RestaurantTools { get; } = [];
+
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(RestaurantToolManager), nameof(RestaurantToolManager.AddToolToDictionary))]
+    public static void RestaurantToolManager_AddToolToDictionary(ToolType tooltype, Furniture_CookingTool tool)
+    {
+        RestaurantTools.Add(tool);
+        Utils.WriteLog($"RestaurantToolManager.AddToolToDictionary: Added {tool.name} ({tooltype.ToString()}) to RestaurantTools");
     }
 
     [HarmonyPrefix]
+    [HarmonyPatch(typeof(CookingTracker), nameof(CookingTracker.HandleAddQueue))]
+    public static void CookingTracker_HandleAddQueue(ref Furniture_CookingTool tool, ref RecipeSO recipe)
+    {
+        var count = RestaurantTools.RemoveAll(a => a == null);
+        Utils.WriteLog($"CookingTracker.HandleAddQueue: Removed {count} null tools from RestaurantTools");
+        foreach (var t in RestaurantTools.Where(t => t != null))
+        {
+            if (t.CanCook(recipe) && !t.Full && !t.CookingSomething)
+            {
+                tool = t;
+                Utils.WriteLog($"CookingTracker.HandleAddQueue: Changed tool to {t.name}");
+                return;
+            }
+        }
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Customer), nameof(Customer.SetupData))]
+    public static void Customer_SetupData(ref Customer __instance)
+    {
+        if (!__instance.Data.m_SelfService && Plugin.AllCustomersSelfServe.Value)
+        {
+            Utils.WriteLog($"Customer {__instance.Data.name} is now smart enough for self-service!");
+            __instance.Data.m_SelfService = true;
+        }
+    }
+
+    [HarmonyPostfix]
     [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.Setup))]
-    public static void UI_GameplayOptions_Setup()
+    public static void UI_GameplayOptions_Setup_Postfix(ref UI_GameplayOptions __instance)
+    {
+        Utils.UpdateResolutionData(__instance);
+    }
+
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.Update))]
+    public static void UI_GameplayOptions_Update(ref UI_GameplayOptions __instance)
+    {
+        Utils.GameplayOptionsInstance = __instance;
+    }
+
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.Setup))]
+    public static void UI_GameplayOptions_Setup_Prefix(ref UI_GameplayOptions __instance)
     {
         var myResData = new ResolutionData
         {
@@ -299,7 +371,6 @@ public static class Patches
 
         UI_GameplayOptions.ResolutionDatas = resDatas.ToArray();
     }
-
 
 #if DEBUG
     [HarmonyPostfix]

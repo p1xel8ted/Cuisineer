@@ -14,7 +14,7 @@ public class Plugin : BasePlugin
 {
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
-    internal const string PluginVersion = "0.1.6";
+    internal const string PluginVersion = "0.1.8";
 
     internal static ManualLogSource Logger { get; private set; }
     internal static ConfigEntry<bool> CorrectMainMenuAspect { get; private set; }
@@ -55,6 +55,8 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<bool> ModifyWeaponSpecialCooldown { get; private set; }
     internal static ConfigEntry<float> WeaponSpecialCooldownValue { get; private set; }
     internal static ConfigEntry<bool> DebugMode { get; private set; }
+
+    internal static ConfigEntry<bool> AllCustomersSelfServe { get; private set; }
     internal static Plugin Instance { get; private set; }
     internal static ConfigEntry<bool> OneHitDestructible { get; private set; }
 
@@ -142,6 +144,8 @@ public class Plugin : BasePlugin
             new ConfigDescription("Determines the speed of customers. Setting too high will cause momentum issues.", new AcceptableValueRange<float>(1.10f, 5f)));
         DineAndDash = Config.Bind("08. Restaurant", "DineAndDash", false,
             new ConfigDescription("Toggle the Dine & Dash mechanic."));
+        AllCustomersSelfServe = Config.Bind("08. Restaurant", "AllCustomersSelfServe", false,
+            new ConfigDescription("All customers are able to collect their own dishes."));
 
         //Group 9: Attacks/Damage
         RemoveChainAttackDelay = Config.Bind("09. Attacks/Damage", "RemoveChainAttackDelay", false,

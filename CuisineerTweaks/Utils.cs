@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Linq;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace CuisineerTweaks;
@@ -16,9 +17,31 @@ public static class Utils
     internal static void FastForwardBrewCraft(UI_BrewArea.StateData stateData)
     {
         var currDate = SimpleSingleton<CalendarManager>.Instance.CurrDate;
-        stateData.m_BrewDate = currDate - 2;  
+        stateData.m_BrewDate = currDate - 2;
     }
-    
+
+    internal static UI_GameplayOptions GameplayOptionsInstance { get; set; }
+
+
+    internal static void UpdateResolutionData(UI_GameplayOptions __instance, bool changeRes = false)
+    {
+        if (__instance == null)
+        {
+            return;
+        }
+        GameplayOptionsInstance = __instance;
+        var resData = UI_GameplayOptions.ResolutionDatas[__instance.m_ResolutionSelection.DropDown.value];
+        Fixes.ResolutionWidth = resData.m_Width;
+        Fixes.ResolutionHeight = resData.m_Height;
+        var fsData = UI_GameplayOptions.FullscreenDatas[__instance.m_FullscreenSelection.DropDown.value];
+        Fixes.FullScreenMode = fsData.m_FullScreenMode;
+        Fixes.MaxRefreshRate = Screen.resolutions
+            .Where(resolution => resolution.height == Fixes.ResolutionHeight && resolution.width == Fixes.ResolutionWidth)
+            .Max(resolution => resolution.refreshRate);
+        if (!changeRes) return;
+        Fixes.UpdateResolutionFrameRate();
+    }
+
     internal static int FindLowestFrameRateMultipleAboveFifty(int originalRate)
     {
         // Start from half of the original rate and decrement by one to find the highest multiple above 50.

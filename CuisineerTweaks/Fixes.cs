@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using UnityEngine;
 
 namespace CuisineerTweaks;
@@ -9,8 +8,12 @@ namespace CuisineerTweaks;
 public static class Fixes
 {
     private const string MainMenuScene = "MainMenuScene";
-    internal static int MaxRefresh => Screen.resolutions.Max(a => a.refreshRate);
-    private static int TimeScale => Utils.FindLowestFrameRateMultipleAboveFifty(MaxRefresh);
+    public static int ResolutionWidth { get; set; }
+    public static int ResolutionHeight { get; set; }
+    public static FullScreenMode FullScreenMode { get; set; }
+    public static int MaxRefreshRate { get; set; }
+
+    private static int TimeScale => Utils.FindLowestFrameRateMultipleAboveFifty(MaxRefreshRate);
     private static Dictionary<string, int> OriginalItemStackSizes { get; } = new();
     private static Dictionary<string, float> OriginalWeaponTimes { get; } = new();
 
@@ -42,6 +45,7 @@ public static class Fixes
             Utils.WriteLog($"Updated weapon cooldown for {slot.m_Weapon.m_WeaponName} from {cooldown} to {newCooldown}", true);
         }
     }
+
 
     internal static void UpdateItemStackSize(ItemInstance __instance)
     {
@@ -84,14 +88,17 @@ public static class Fixes
         UpdateCheats();
     }
 
-    private static void UpdateResolutionFrameRate()
+    internal static void UpdateResolutionFrameRate()
     {
-        Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow, MaxRefresh);
+        if (ResolutionWidth == 0 || ResolutionHeight == 0 || FullScreenMode == 0 || MaxRefreshRate == 0) return;
+
+        Screen.SetResolution(ResolutionWidth, ResolutionHeight, FullScreenMode, MaxRefreshRate);
+
         Utils.WriteLog($"Set resolution to {Screen.currentResolution}");
 
-        if (Application.targetFrameRate != MaxRefresh)
+        if (Application.targetFrameRate != MaxRefreshRate)
         {
-            Application.targetFrameRate = MaxRefresh;
+            Application.targetFrameRate = MaxRefreshRate;
             Utils.WriteLog($"Set targetFrameRate to {Application.targetFrameRate}.");
         }
         else
@@ -103,18 +110,26 @@ public static class Fixes
     private static void UpdateFixedDeltaTime()
     {
         if (!Plugin.CorrectFixedUpdateRate.Value) return;
-        var originalTime = Time.fixedDeltaTime;
-        var scale = Plugin.UseRefreshRateForFixedUpdateRate.Value ? MaxRefresh : TimeScale;
-        var newValue = 1f / scale;
-        if (Mathf.Approximately(newValue, originalTime))
+
+        float targetFPS = Plugin.UseRefreshRateForFixedUpdateRate.Value ? MaxRefreshRate : TimeScale;
+        var newValue = 1f / targetFPS;
+
+        if (Mathf.Approximately(newValue, Time.fixedDeltaTime))
         {
-            Utils.WriteLog($"fixedDeltaTime is already {newValue} ({scale}fps). No update necessary.");
+            Utils.WriteLog($"fixedDeltaTime is already {newValue} ({targetFPS}fps). No update necessary.");
+            return;
+        }
+
+        if (newValue < Time.fixedDeltaTime)
+        {
+            Utils.WriteLog($"Cannot set fixedDeltaTime to {newValue} ({targetFPS}fps), it is less than the original {Time.fixedDeltaTime} ({Mathf.Round(1f / Time.fixedDeltaTime)}fps).");
             return;
         }
 
         Time.fixedDeltaTime = newValue;
-        Utils.WriteLog($"Set fixedDeltaTime to {newValue} ({scale}fps). Original is {originalTime} ({Mathf.Round(1f / originalTime)}fps).");
+        Utils.WriteLog($"Set fixedDeltaTime to {newValue} ({targetFPS}fps).");
     }
+
 
     private static void UpdateCheats()
     {
@@ -130,8 +145,17 @@ public static class Fixes
         if (!scene.Equals(MainMenuScene)) return;
         if (!Plugin.CorrectMainMenuAspect.Value) return;
         const float baseAspect = 16f / 9f;
-        var currentAspect = Display.main.systemWidth / (float) Display.main.systemHeight;
-        if (currentAspect <= baseAspect) return;
+        float currentAspect;
+        if (ResolutionHeight == 0 || ResolutionWidth == 0)
+        {
+            currentAspect = (float) Display.main.systemWidth / Display.main.systemHeight;
+        }
+        else
+        {
+            currentAspect = (float) ResolutionWidth / ResolutionHeight;
+        }
+
+        if (currentAspect != 0 && currentAspect <= baseAspect) return;
 
         var positiveScaleFactor = currentAspect / baseAspect;
         var negativeScaleFactor = 1f / positiveScaleFactor;

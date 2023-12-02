@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
         <Description>Cuisineer Tweaks</Description>
-        <Version>0.1.6</Version>
+        <Version>0.1.8</Version>
         <AssemblyVersion>$(Version)</AssemblyVersion>
         <FileVersion>$(Version)</FileVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
