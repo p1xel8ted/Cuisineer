@@ -14,7 +14,7 @@ public class Plugin : BasePlugin
 {
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
-    internal const string PluginVersion = "0.1.8";
+    internal const string PluginVersion = "0.1.9";
 
     internal static ManualLogSource Logger { get; private set; }
     internal static ConfigEntry<bool> CorrectMainMenuAspect { get; private set; }
@@ -60,6 +60,7 @@ public class Plugin : BasePlugin
     internal static Plugin Instance { get; private set; }
     internal static ConfigEntry<bool> OneHitDestructible { get; private set; }
 
+    internal static ConfigEntry<bool> AutoReloadWeapons { get; private set; }
     private void InitConfig()
     {
         // Group 0: General Settings
@@ -156,7 +157,10 @@ public class Plugin : BasePlugin
             new ConfigDescription("Set the cooldown for weapon special attacks. 25 is 25% shorter. 12sec would become 9sec.", new AcceptableValueRange<float>(10f, 90f)));
         OneHitDestructible = Config.Bind("09. Attacks/Damage", "OneHitDestructible", false,
             new ConfigDescription("One hit destructible objects. Like the rocks/trees etc."));
-
+        AutoReloadWeapons = Config.Bind("09. Attacks/Damage", "AutoReloadWeapons", false,
+            new ConfigDescription("Automatically reload weapons when they run out of ammo."));
+        
+        
         //Group 10: Cheats
         AutoCook = Config.Bind("10. Cheats", "AutoCook", false,
             new ConfigDescription("Automatically cook food. !!WARNING!! - THIS WILL CAUSE ALL(?) RECIPES TO UNLOCK AND POP THE APPROPRIATE ACHIEVEMENTS."));
@@ -178,9 +182,9 @@ public class Plugin : BasePlugin
             Fixes.RunFixes(string.Empty, true);
         };
         InitConfig();
-        SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>) OnSceneLoaded;
-        Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginGuid);
-        AddComponent<UnityEvents>();
+       SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>) OnSceneLoaded;
+       Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), PluginGuid);
+       AddComponent<UnityEvents>();
         Utils.WriteLog($"Plugin {PluginGuid} is loaded!", true);
     }
 

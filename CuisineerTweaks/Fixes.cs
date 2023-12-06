@@ -119,10 +119,13 @@ public static class Fixes
             Utils.WriteLog($"fixedDeltaTime is already {newValue} ({targetFPS}fps). No update necessary.");
             return;
         }
+        
+        var oldFps = Mathf.Round(1f / Time.fixedDeltaTime);
+        var newFps = Mathf.Round(1f / newValue);
 
-        if (newValue < Time.fixedDeltaTime)
+        if (newFps < oldFps)
         {
-            Utils.WriteLog($"Cannot set fixedDeltaTime to {newValue} ({targetFPS}fps), it is less than the original {Time.fixedDeltaTime} ({Mathf.Round(1f / Time.fixedDeltaTime)}fps).");
+            Utils.WriteLog($"Cannot set fixedDeltaTime to {newValue} ({newFps}fps), it is less than the original {Time.fixedDeltaTime} ({oldFps}fps).");
             return;
         }
 

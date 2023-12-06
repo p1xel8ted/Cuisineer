@@ -22,7 +22,19 @@ public class UnityEvents : MonoBehaviour
             Plugin.Logger.LogInfo("Saved current game.");
         }
 
-        if (TimeManager.m_Instance == null || !Plugin.PauseTimeWhenViewingInventories.Value) return;
-        TimeManager.ToggleTimePause(UI_InventoryViewBase.AnyInventoryActive);
+        if (Plugin.PauseTimeWhenViewingInventories.Value)
+        {
+            if (TimeManager.m_Instance != null)
+            {
+                TimeManager.ToggleTimePause(UI_InventoryViewBase.AnyInventoryActive);
+            }
+        }
+        else
+        {
+            if (TimeManager.m_Instance != null)
+            {
+                TimeManager.ToggleTimePause(false);
+            }
+        }
     }
 }

@@ -2,10 +2,12 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using HarmonyLib;
+using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppSystem;
 using UnityEngine;
 using Environment = System.Environment;
+using Object = UnityEngine.Object;
 using StringComparison = System.StringComparison;
 
 namespace CuisineerTweaks;
@@ -81,10 +83,13 @@ public static class Patches
         RestaurantExtInstance ??= __instance;
     }
 
+    private static PlayerRuntimeData PlayerRuntimeDataInstance { get; set; }
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Player), nameof(Player.LateUpdate))]
     public static void Player_OnEnable(ref Player __instance)
     {
+        PlayerRuntimeDataInstance = __instance.m_RuntimeData;
         if (!Plugin.IncreasePlayerMoveSpeed.Value) return;
         __instance.m_RuntimeData.m_MovementModifier = Plugin.PlayerMoveSpeedValue.Value;
         __instance.m_AnimHandler.Anim.speed = Plugin.PlayerMoveSpeedValue.Value;
@@ -96,7 +101,10 @@ public static class Patches
     public static void Customer_FixedUpdate(ref Customer __instance)
     {
         if (!Plugin.IncreaseCustomerMoveSpeed.Value) return;
-        if (__instance == null || __instance.Data == null || __instance.m_Agent == null) {return;}
+        if (__instance == null || __instance.Data == null || __instance.m_Agent == null)
+        {
+            return;
+        }
 
         var newSpeed = __instance.Data.m_MovementSpeed * Plugin.CustomerMoveSpeedValue.Value;
         __instance.m_Agent.speed = newSpeed;
@@ -283,15 +291,25 @@ public static class Patches
         Utils.UpdateResolutionData(Utils.GameplayOptionsInstance);
     }
 
-
     [HarmonyPostfix]
-    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.HandleSelectedResolution))]
-    public static void UI_GameplayOptions_HandleSelectedResolution(ref UI_GameplayOptions __instance)
+    [HarmonyPatch(typeof(UI_EquippedSlot_Belt), nameof(UI_EquippedSlot_Belt.UpdateCurrentAmmoCount))]
+    public static void UI_EquippedSlot_Belt_UpdateCurrentAmmoCount(ref UI_EquippedSlot_Belt __instance)
     {
-        Utils.UpdateResolutionData(__instance);
+        if (!Plugin.AutoReloadWeapons.Value) return;
+
+        var currWeapon = __instance.m_CurrWeapon;
+        if (currWeapon is not {IsRanged: true}) return;
+
+        var ammoCount = currWeapon.m_RangedWeapon.m_AmmoCount;
+        if (currWeapon.m_CurrentAmmo < ammoCount)
+        {
+            PlayerRuntimeDataInstance?.ManualReload();
+        }
     }
 
     [HarmonyPostfix]
+    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.HandleSelectedFramerate))]
+    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.HandleSelectedResolution))]
     [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.HandleSelectedFullscreenMode))]
     public static void UI_GameplayOptions_HandleSelectedFullscreenMode(ref UI_GameplayOptions __instance)
     {
@@ -338,7 +356,7 @@ public static class Patches
     }
 
     [HarmonyPostfix]
-    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.Setup))]
+    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.SetupOptions))]
     public static void UI_GameplayOptions_Setup_Postfix(ref UI_GameplayOptions __instance)
     {
         Utils.UpdateResolutionData(__instance);
@@ -354,7 +372,7 @@ public static class Patches
 
 
     [HarmonyPrefix]
-    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.Setup))]
+    [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.SetupOptions))]
     public static void UI_GameplayOptions_Setup_Prefix(ref UI_GameplayOptions __instance)
     {
         var myResData = new ResolutionData
@@ -370,6 +388,28 @@ public static class Patches
         }
 
         UI_GameplayOptions.ResolutionDatas = resDatas.ToArray();
+
+
+        var frameRateDatas = UI_GameplayOptions.FramerateDatas.ToList();
+
+        //obtain all supported refresh rates for current display, ignore resolution
+        var refreshRates = Screen.resolutions
+            .Select(resolution => resolution.refreshRate)
+            .Distinct()
+            .ToList();
+
+        //add refresh rates that are in  `refreshRates` but not in `frameRateDatas` and log it
+        foreach (var refreshRate in refreshRates.Where(refreshRate => frameRateDatas.All(a => a.m_FPS != refreshRate)))
+        {
+            frameRateDatas.Add(new FramerateData {m_FPS = refreshRate});
+            Utils.WriteLog($"{refreshRate}Hz not detected in Target Framerate options; adding now.", true);
+        }
+
+
+        //sort highest to lowest
+        frameRateDatas.Sort((a, b) => b.m_FPS.CompareTo(a.m_FPS));
+
+        UI_GameplayOptions.FramerateDatas = frameRateDatas.ToArray();
     }
 
 #if DEBUG

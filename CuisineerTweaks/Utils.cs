@@ -35,9 +35,10 @@ public static class Utils
         Fixes.ResolutionHeight = resData.m_Height;
         var fsData = UI_GameplayOptions.FullscreenDatas[__instance.m_FullscreenSelection.DropDown.value];
         Fixes.FullScreenMode = fsData.m_FullScreenMode;
-        Fixes.MaxRefreshRate = Screen.resolutions
-            .Where(resolution => resolution.height == Fixes.ResolutionHeight && resolution.width == Fixes.ResolutionWidth)
-            .Max(resolution => resolution.refreshRate);
+        Fixes.MaxRefreshRate = UI_GameplayOptions.FramerateDatas[__instance.m_FramerateSelection.DropDown.value].m_FPS;
+
+
+        WriteLog($"Chosen Display Settings: {Fixes.ResolutionWidth}x{Fixes.ResolutionHeight}@{Fixes.MaxRefreshRate}Hz in {Fixes.FullScreenMode} mode", true);
         if (!changeRes) return;
         Fixes.UpdateResolutionFrameRate();
     }
