@@ -111,7 +111,7 @@ public static class Patches
         if (!Plugin.InstantWeaponUpgrades.Value) return;
         __instance.ClaimEquipment();
     }
-
+    
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.Setup), typeof(ItemInstance), typeof(Vector3), typeof(float), typeof(float), typeof(float), typeof(float))]
@@ -129,42 +129,25 @@ public static class Patches
     {
         if (!Plugin.OneHitDestructible.Value) return;
         if (__instance == null || collider == null) return;
-
-        if (ColliderCoroutines.ContainsKey(collider)) return;
-        
-        var coroutine = __instance.StartCoroutine(HandleHitDestructibleCoroutine(__instance, collider));
-        ColliderCoroutines[collider] = coroutine;
-
-    }
-    
-    private static Dictionary<Collider, Coroutine> ColliderCoroutines { get; } = new();
-
-    
-    private static IEnumerator HandleHitDestructibleCoroutine(BaseAttack __instance, Collider collider)
-    {
         var prop = collider.GetComponent<Prop>();
-        if (prop == null)
-        {
-            ColliderCoroutines.Remove(collider);
-            yield break;
-        }
+        if (prop == null) return;
 
+        //if (__instance.m_AttackPropertyType != AttackPropertyType.MELEE) return;
+        
         const int maxIterations = 10;
+        var count = 0;
         for (var i = 0; i < maxIterations; i++)
         {
             if (__instance == null || prop == null)
             {
-                // Break out of the loop if either __instance or prop becomes null
+                Plugin.Logger.LogWarning($"BaseAttack.HandleCollision: __instance or prop is null! ({count} iterations)");
                 break;
             }
-
+        
             __instance.HandleHitDestructible(prop);
-            yield return null; // Ensure each iteration occurs separately
+            count++;
         }
-
-        ColliderCoroutines.Remove(collider);
     }
-
 
     [HarmonyFinalizer]
     [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.HandleCollision))]
@@ -174,11 +157,7 @@ public static class Patches
     }
 
     [HarmonyPrefix]
-    [HarmonyPostfix]
     [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.Update))]
-    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.FixedUpdate))]
-    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.FixedUpdate_ChainAttack))]
-    [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.FixedUpdate_ActiveNestedAttacks))]
     public static void BaseAttack_Update(ref BaseAttack __instance)
     {
         if (!Plugin.RemoveChainAttackDelay.Value) return;

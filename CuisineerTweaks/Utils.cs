@@ -19,6 +19,19 @@ public static class Utils
     internal static UI_GameplayOptions GameplayOptionsInstance { get; set; }
 
 
+    internal static void ShowScreenMessage(string message, int displayFor = 3)
+    {
+        var tpm = SimpleSingleton<TextPopupManager>.m_Instance;
+        if (tpm == null)
+        {
+            WriteLog("TextPopupManager is null!");
+            return;
+        }
+
+        tpm.m_VisibleDuration = displayFor;
+        tpm.ShowText(message);
+    }
+    
     internal static void UpdateResolutionData(UI_GameplayOptions __instance, bool changeRes = false)
     {
         if (__instance == null)

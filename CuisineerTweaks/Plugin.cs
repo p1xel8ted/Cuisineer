@@ -171,6 +171,7 @@ public class Plugin : BasePlugin
             InitConfig();
             Utils.WriteLog("Reloaded configuration.", true);
             Fixes.RunFixes(string.Empty, true);
+            Utils.ShowScreenMessage(Lang.GetReloadedConfigMessage(),2);
         };
         InitConfig();
        SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>) OnSceneLoaded;

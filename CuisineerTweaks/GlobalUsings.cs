@@ -1,15 +1,14 @@
 ﻿// Global using directives
 
-global using System.Collections;
 global using System.Collections.Generic;
 global using System.Diagnostics.CodeAnalysis;
 global using System.Linq;
 global using System.Reflection;
+global using BattleBrewCore.Localization;
 global using BepInEx;
 global using BepInEx.Configuration;
 global using BepInEx.Logging;
 global using BepInEx.Unity.IL2CPP;
-global using BepInEx.Unity.IL2CPP.Utils;
 global using HarmonyLib;
 global using Il2CppInterop.Runtime.InteropTypes.Arrays;
 global using Il2CppSystem;
