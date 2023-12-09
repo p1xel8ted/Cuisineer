@@ -1,8 +1,4 @@
-﻿using System.Linq;
-using UnityEngine;
-using UnityEngine.UI;
-
-namespace CuisineerTweaks;
+﻿namespace CuisineerTweaks;
 
 public static class Utils
 {

@@ -1,16 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using HarmonyLib;
-using Il2CppInterop.Runtime;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using Il2CppSystem;
-using UnityEngine;
-using Environment = System.Environment;
-using Object = UnityEngine.Object;
-using StringComparison = System.StringComparison;
-
-namespace CuisineerTweaks;
+﻿namespace CuisineerTweaks;
 
 [Harmony]
 [SuppressMessage("ReSharper", "InconsistentNaming")]
@@ -141,15 +129,42 @@ public static class Patches
     {
         if (!Plugin.OneHitDestructible.Value) return;
         if (__instance == null || collider == null) return;
+
+        if (ColliderCoroutines.ContainsKey(collider)) return;
+        
+        var coroutine = __instance.StartCoroutine(HandleHitDestructibleCoroutine(__instance, collider));
+        ColliderCoroutines[collider] = coroutine;
+
+    }
+    
+    private static Dictionary<Collider, Coroutine> ColliderCoroutines { get; } = new();
+
+    
+    private static IEnumerator HandleHitDestructibleCoroutine(BaseAttack __instance, Collider collider)
+    {
         var prop = collider.GetComponent<Prop>();
-        if (prop == null) return;
+        if (prop == null)
+        {
+            ColliderCoroutines.Remove(collider);
+            yield break;
+        }
 
         const int maxIterations = 10;
         for (var i = 0; i < maxIterations; i++)
         {
+            if (__instance == null || prop == null)
+            {
+                // Break out of the loop if either __instance or prop becomes null
+                break;
+            }
+
             __instance.HandleHitDestructible(prop);
+            yield return null; // Ensure each iteration occurs separately
         }
+
+        ColliderCoroutines.Remove(collider);
     }
+
 
     [HarmonyFinalizer]
     [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.HandleCollision))]

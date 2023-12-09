@@ -1,6 +1,4 @@
-﻿using UnityEngine;
-
-namespace CuisineerTweaks;
+﻿namespace CuisineerTweaks;
 
 public class UnityEvents : MonoBehaviour
 {

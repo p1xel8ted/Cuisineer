@@ -1,20 +1,11 @@
-﻿using System.Reflection;
-using BepInEx;
-using BepInEx.Configuration;
-using BepInEx.Logging;
-using BepInEx.Unity.IL2CPP;
-using HarmonyLib;
-using UnityEngine.Events;
-using UnityEngine.SceneManagement;
-
-namespace CuisineerTweaks;
+﻿namespace CuisineerTweaks;
 
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
 public class Plugin : BasePlugin
 {
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
-    internal const string PluginVersion = "0.1.9";
+    internal const string PluginVersion = "0.2.0";
 
     internal static ManualLogSource Logger { get; private set; }
     internal static ConfigEntry<bool> CorrectMainMenuAspect { get; private set; }
