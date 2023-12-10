@@ -56,11 +56,15 @@ public class Plugin : BasePlugin
     
     internal static ConfigEntry<bool> UseStaticZoomLevel { get; private set; }
     internal static ConfigEntry<float> StaticZoomAdjustment { get; private set; }
+    
+    internal static ConfigEntry<bool> DisplayMessages { get; private set; }
     private void InitConfig()
     {
         // Group 0: General Settings
         DebugMode = Config.Bind("00. General", "DebugMode", false,
             new ConfigDescription("Enables debug mode, which enables more verbose logging. This is not recommended for normal use."));
+        DisplayMessages = Config.Bind("00. General", "DisplayMessages", true,
+            new ConfigDescription("Enables the display of messages in-game. Disable this if you don't want to see messages."));
 
         // Group 1: Performance Settings
         CorrectFixedUpdateRate = Config.Bind("01. Performance", "CorrectFixedUpdateRate", true,

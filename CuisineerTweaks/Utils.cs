@@ -21,6 +21,7 @@ public static class Utils
 
     internal static void ShowScreenMessage(string message, int displayFor = 3)
     {
+        if (!Plugin.DisplayMessages.Value) return;
         var tpm = GameInstances.TextPopupManagerInstance;
         if (tpm == null)
         {

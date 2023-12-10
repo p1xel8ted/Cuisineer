@@ -8,7 +8,6 @@ namespace CuisineerTweaks;
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public static class Fixes
 {
-  
     public static int ResolutionWidth { get; set; }
     public static int ResolutionHeight { get; set; }
     public static FullScreenMode FullScreenMode { get; set; }
@@ -16,7 +15,6 @@ public static class Fixes
     private static int TimeScale => Utils.FindLowestFrameRateMultipleAboveFifty(MaxRefreshRate);
     private static Dictionary<string, int> OriginalItemStackSizes { get; } = new();
     private static Dictionary<string, float> OriginalWeaponTimes { get; } = new();
-
 
 
     internal static void UpdateWeaponCooldowns()
@@ -61,7 +59,7 @@ public static class Fixes
                 break;
             }
         }
-        
+
         if (GameInstances.PlayerCameraInstance == null || GameInstances.MapTransitionManagerInstance == null || GameInstances.MapTransitionManagerInstance.m_CurrMapData == null) return;
 
         var newZoom = GetNewZoomValue(Plugin.RelativeZoomAdjustment.Value);
@@ -70,7 +68,8 @@ public static class Fixes
         GameInstances.PlayerCameraInstance.m_Lens = GameInstances.PlayerCameraInstance.m_Lens with {OrthographicSize = newZoom};
 
         if (!showMessage) return;
-        Utils.ShowScreenMessage($"{Lang.GetZoomAdjustedByMessage()} {difference:F1}", 1);
+        var message = Plugin.UseStaticZoomLevel.Value ? $"{Lang.GetZoomSetToMessage()} {Plugin.StaticZoomAdjustment.Value:F1}" : $"{Lang.GetZoomAdjustedByMessage()} {difference:F1}";
+        Utils.ShowScreenMessage(message, 1);
     }
 
     internal static float GetNewZoomValue(float original)
@@ -81,12 +80,12 @@ public static class Fixes
         {
             return currentOrthographicSize;
         }
-        
+
         if (Plugin.UseStaticZoomLevel.Value)
         {
             return Plugin.StaticZoomAdjustment.Value;
         }
-      
+
         var adjustment = Mathf.Round(original * 10f) / 10f; // Directly round the original value
         var adjustedSize = currentOrthographicSize + adjustment; // Apply the adjustment directly
 
@@ -199,7 +198,7 @@ public static class Fixes
     {
         if (!scene.Equals(Const.MainMenuScene)) return;
         if (!Plugin.CorrectMainMenuAspect.Value) return;
-       
+
         float currentAspect;
         if (ResolutionHeight == 0 || ResolutionWidth == 0)
         {
@@ -212,9 +211,9 @@ public static class Fixes
 
         if (currentAspect != 0 && currentAspect <= Const.BaseAspect) return;
 
-        var positiveScaleFactor = currentAspect /  Const.BaseAspect;
+        var positiveScaleFactor = currentAspect / Const.BaseAspect;
         var negativeScaleFactor = 1f / positiveScaleFactor;
-        Utils.WriteLog($"Current aspect ratio ({currentAspect}) is greater than base aspect ratio ({ Const.BaseAspect}). Resizing UI elements.");
+        Utils.WriteLog($"Current aspect ratio ({currentAspect}) is greater than base aspect ratio ({Const.BaseAspect}). Resizing UI elements.");
 
         Utils.ScaleElement("UI_MainMenuCanvas/Mask", true);
         Utils.ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container", false, positiveScaleFactor);

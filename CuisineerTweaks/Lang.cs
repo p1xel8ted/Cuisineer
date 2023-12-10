@@ -35,4 +35,22 @@ public static class Lang
             _ => "Zoom adjusted by"
         };
     }
+    
+    internal static string GetZoomSetToMessage()
+    {
+        return LanguageSettings.Language switch
+        {
+            LANGUAGE.EN => "Zoom adjusted to",
+            LANGUAGE.ZHTW => "縮放調整至",
+            LANGUAGE.ZHCN => "缩放调整至",
+            LANGUAGE.JA => "ズーム調整済み",
+            LANGUAGE.KO => "줌 조정됨",
+            LANGUAGE.DE => "Zoom angepasst auf",
+            LANGUAGE.FR => "Zoom ajusté à",
+            LANGUAGE.ES => "Zoom ajustado a",
+            LANGUAGE.BRPT => "Zoom ajustado para",
+            _ => "Zoom adjusted to"
+        };
+    }
+
 }
