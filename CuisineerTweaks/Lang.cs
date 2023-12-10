@@ -17,6 +17,22 @@ public static class Lang
             LANGUAGE.BRPT => "Cuisineer Tweaks Configuração recarregada!",
             _ => "Cuisineer Tweaks Configuration Reloaded!"
         };
+    }
 
+    internal static string GetZoomAdjustedByMessage()
+    {
+        return LanguageSettings.Language switch
+        {
+            LANGUAGE.EN => "Zoom adjusted by",
+            LANGUAGE.ZHTW => "縮放調整由",
+            LANGUAGE.ZHCN => "缩放调整由",
+            LANGUAGE.JA => "ズーム調整者",
+            LANGUAGE.KO => "줌 조정자",
+            LANGUAGE.DE => "Zoom angepasst von",
+            LANGUAGE.FR => "Zoom ajusté par",
+            LANGUAGE.ES => "Zoom ajustado por",
+            LANGUAGE.BRPT => "Zoom ajustado por",
+            _ => "Zoom adjusted by"
+        };
     }
 }

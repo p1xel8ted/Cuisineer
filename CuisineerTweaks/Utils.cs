@@ -1,4 +1,7 @@
-﻿namespace CuisineerTweaks;
+﻿using Cinemachine;
+using Il2CppInterop.Runtime;
+
+namespace CuisineerTweaks;
 
 public static class Utils
 {
@@ -12,16 +15,13 @@ public static class Utils
 
     internal static void FastForwardBrewCraft(UI_BrewArea.StateData stateData)
     {
-        var currDate = SimpleSingleton<CalendarManager>.Instance.CurrDate;
+        var currDate = GameInstances.CalendarManagerInstance.CurrDate;
         stateData.m_BrewDate = currDate - 2;
     }
 
-    internal static UI_GameplayOptions GameplayOptionsInstance { get; set; }
-
-
     internal static void ShowScreenMessage(string message, int displayFor = 3)
     {
-        var tpm = SimpleSingleton<TextPopupManager>.m_Instance;
+        var tpm = GameInstances.TextPopupManagerInstance;
         if (tpm == null)
         {
             WriteLog("TextPopupManager is null!");
@@ -32,13 +32,21 @@ public static class Utils
         tpm.ShowText(message);
     }
     
+    public static List<T> FindIl2CppType<T>() where T : UnityEngine.Object
+    {
+        List<T> list = [];
+        list.AddRange(Resources.FindObjectsOfTypeAll( Il2CppType.Of<T>()).Select(obj => obj.TryCast<T>()).Where(o => o != null));
+        return list;
+    }
+
+    
     internal static void UpdateResolutionData(UI_GameplayOptions __instance, bool changeRes = false)
     {
         if (__instance == null)
         {
             return;
         }
-        GameplayOptionsInstance = __instance;
+        GameInstances.GameplayOptionsInstance = __instance;
         var resData = UI_GameplayOptions.ResolutionDatas[__instance.m_ResolutionSelection.DropDown.value];
         Fixes.ResolutionWidth = resData.m_Width;
         Fixes.ResolutionHeight = resData.m_Height;

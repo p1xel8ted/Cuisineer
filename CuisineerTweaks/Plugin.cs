@@ -5,7 +5,7 @@ public class Plugin : BasePlugin
 {
     private const string PluginGuid = "p1xel8ted.cuisineer.cuisineertweaks";
     private const string PluginName = "Cuisineer Tweaks (IL2CPP)";
-    internal const string PluginVersion = "0.2.0";
+    internal const string PluginVersion = "0.2.1";
 
     internal static ManualLogSource Logger { get; private set; }
     internal static ConfigEntry<bool> CorrectMainMenuAspect { get; private set; }
@@ -50,8 +50,12 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<bool> AllCustomersSelfServe { get; private set; }
     internal static Plugin Instance { get; private set; }
     internal static ConfigEntry<bool> OneHitDestructible { get; private set; }
-
     internal static ConfigEntry<bool> AutoReloadWeapons { get; private set; }
+    internal static ConfigEntry<bool> AdjustableZoomLevel { get; private set; }
+    internal static ConfigEntry<float> RelativeZoomAdjustment { get; private set; }
+    
+    internal static ConfigEntry<bool> UseStaticZoomLevel { get; private set; }
+    internal static ConfigEntry<float> StaticZoomAdjustment { get; private set; }
     private void InitConfig()
     {
         // Group 0: General Settings
@@ -159,6 +163,16 @@ public class Plugin : BasePlugin
             new ConfigDescription("No ingredients required."));
         InstantKill = Config.Bind("10. Cheats", "InstantKill", false,
             new ConfigDescription("One hit kill enemies."));
+        
+        //Group 11: Zoom
+        AdjustableZoomLevel = Config.Bind("11. Zoom", "AdjustableZoomLevel", false,
+            new ConfigDescription("Adjust the zoom level of the camera. This needs to be true for any of the zoom settings to function."));
+        RelativeZoomAdjustment = Config.Bind("11. Zoom", "RelativeZoomAdjustment", 0f,
+            new ConfigDescription("Adjust the relative zoom level of the camera. Each area has a different base zoom, this adds/removes to the base zoom. Recommended.", new AcceptableValueRange<float>(-100f, 100f)));
+        UseStaticZoomLevel = Config.Bind("11. Zoom", "UseStaticZoomLevel", false,
+            new ConfigDescription("Use a static zoom level instead of relative zoom. Zoom will be the same everywhere. Relative is ignored if this is true."));
+        StaticZoomAdjustment = Config.Bind("11. Zoom", "StaticZoomAdjustment", 5f,    
+            new ConfigDescription("Static zoom value to use. For reference, inside the bedroom, the default game value is 2.9. Outside is 5, and a dungeon is 4.5.", new AcceptableValueRange<float>(1f, 100f)));
     }
 
 

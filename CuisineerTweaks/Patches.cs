@@ -4,12 +4,9 @@
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public static class Patches
 {
-    private const string UpgradeDateRestaurant = "UPGRADE_DATE_RESTAURANT";
-
-    private static RestaurantExt RestaurantExtInstance { get; set; }
+    private static List<Furniture_CookingTool> RestaurantTools { get; } = [];
     private static float NextRegen { get; set; }
-
-
+    
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.Clone))]
     [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.CloneWithCount))]
@@ -24,7 +21,6 @@ public static class Patches
     {
         Fixes.UpdateItemStackSize(__instance);
     }
-
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(UI_EquippedSlot_Belt), nameof(UI_EquippedSlot_Belt.SetupUI))]
@@ -54,30 +50,29 @@ public static class Patches
     public static void UI_CarpenterUpgradeArea_HandleUpgradeRestaurantClicked(ref UI_CarpenterUpgradeArea __instance)
     {
         if (!Plugin.InstantRestaurantUpgrades.Value) return;
-        var currentDateInt = SimpleSingleton<CalendarManager>.Instance.CurrDate;
-        GlobalEvents.Narrative.OnFlagTrigger.Invoke(UpgradeDateRestaurant, FlagType.Persisting, currentDateInt - 2);
-        SimpleSingleton<RestaurantDataManager>.Instance.HandleDayChanged();
-        if (RestaurantExtInstance != null)
+        var currentDateInt = GameInstances.CalendarManagerInstance.CurrDate;
+        GlobalEvents.Narrative.OnFlagTrigger.Invoke(Const.UpgradeDateRestaurant, FlagType.Persisting, currentDateInt - 2);
+        GameInstances.RestaurantDataManagerInstance.HandleDayChanged();
+        if (GameInstances.RestaurantExtInstance != null)
         {
-            RestaurantExtInstance.LoadRestaurantExterior();
+            GameInstances.RestaurantExtInstance.LoadRestaurantExterior();
         }
     }
 
     [HarmonyPostfix]
-    [HarmonyPatch(typeof(RestaurantExt), nameof(RestaurantExtInstance.Awake))]
-    [HarmonyPatch(typeof(RestaurantExt), nameof(RestaurantExtInstance.LoadRestaurantExterior))]
+    [HarmonyPatch(typeof(RestaurantExt), nameof(RestaurantExt.Awake))]
+    [HarmonyPatch(typeof(RestaurantExt), nameof(RestaurantExt.LoadRestaurantExterior))]
     public static void RestaurantExt_Awake(ref RestaurantExt __instance)
     {
-        RestaurantExtInstance ??= __instance;
+        GameInstances.RestaurantExtInstance ??= __instance;
     }
 
-    private static PlayerRuntimeData PlayerRuntimeDataInstance { get; set; }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(Player), nameof(Player.LateUpdate))]
     public static void Player_OnEnable(ref Player __instance)
     {
-        PlayerRuntimeDataInstance = __instance.m_RuntimeData;
+        GameInstances.PlayerRuntimeDataInstance = __instance.m_RuntimeData;
         if (!Plugin.IncreasePlayerMoveSpeed.Value) return;
         __instance.m_RuntimeData.m_MovementModifier = Plugin.PlayerMoveSpeedValue.Value;
         __instance.m_AnimHandler.Anim.speed = Plugin.PlayerMoveSpeedValue.Value;
@@ -111,7 +106,7 @@ public static class Patches
         if (!Plugin.InstantWeaponUpgrades.Value) return;
         __instance.ClaimEquipment();
     }
-    
+
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.Setup), typeof(ItemInstance), typeof(Vector3), typeof(float), typeof(float), typeof(float), typeof(float))]
@@ -125,29 +120,32 @@ public static class Patches
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.HandleCollision))]
-    public static void BaseAttack_HandleCollision(ref BaseAttack __instance, ref Collider collider)
+    public static bool BaseAttack_HandleCollision(BaseAttack __instance, Collider collider)
     {
-        if (!Plugin.OneHitDestructible.Value) return;
-        if (__instance == null || collider == null) return;
-        var prop = collider.GetComponent<Prop>();
-        if (prop == null) return;
+        if (!Plugin.OneHitDestructible.Value || __instance == null || collider == null) return true;
 
-        //if (__instance.m_AttackPropertyType != AttackPropertyType.MELEE) return;
-        
-        const int maxIterations = 10;
-        var count = 0;
-        for (var i = 0; i < maxIterations; i++)
+        var prop = collider.GetComponent<Prop>();
+        if (prop == null || __instance.m_AttackPropertyType != AttackPropertyType.MELEE) return true;
+
+        if ((prop.Destructible || prop._Destructible_k__BackingField) &&
+            prop.Type is PropType.Destructible or PropType.ShatterDestructible or PropType.PassThroughDestructible)
         {
-            if (__instance == null || prop == null)
+            for (var i = 0; i < 5; i++)
             {
-                Plugin.Logger.LogWarning($"BaseAttack.HandleCollision: __instance or prop is null! ({count} iterations)");
-                break;
+                if (__instance == null || prop == null)
+                {
+                    break;
+                }
+
+                __instance.HandleHitDestructible(prop);
             }
-        
-            __instance.HandleHitDestructible(prop);
-            count++;
+
+            return false;
         }
+
+        return true;
     }
+
 
     [HarmonyFinalizer]
     [HarmonyPatch(typeof(BaseAttack), nameof(BaseAttack.HandleCollision))]
@@ -271,18 +269,47 @@ public static class Patches
     }
 
     [HarmonyPostfix]
+    [HarmonyPatch(typeof(CameraController), nameof(CameraController.HandleLightingModeChange))]
+    public static void CameraController_HandleLightingModeChange()
+    {
+        if (!Plugin.AdjustableZoomLevel.Value) return;
+        Fixes.UpdateCameraZoom(false);
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(CameraController), nameof(CameraController.SetZoom))]
+    public static void CameraController_SetZoom(ref float zoom)
+    {
+        if (!Plugin.AdjustableZoomLevel.Value) return;
+        zoom = Fixes.GetNewZoomValue(Plugin.UseStaticZoomLevel.Value ? Plugin.StaticZoomAdjustment.Value : Plugin.RelativeZoomAdjustment.Value);
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(CameraController), nameof(CameraController.RestoreZoom))]
+    public static bool CameraController_RestoreZoom(ref CameraController __instance)
+    {
+        if (!Plugin.AdjustableZoomLevel.Value) return true;
+        __instance.m_TargetZoom = Fixes.GetNewZoomValue(Plugin.UseStaticZoomLevel.Value ? Plugin.StaticZoomAdjustment.Value : Plugin.RelativeZoomAdjustment.Value);
+        __instance.m_RestoringZoom = true;
+        return false;
+    }
+
+    [HarmonyPostfix]
     [HarmonyPatch(typeof(LoadingScreenProgressComponent), nameof(LoadingScreenProgressComponent.OnEnable))]
     [HarmonyPatch(typeof(LoadingScreenProgressComponent), nameof(LoadingScreenProgressComponent.OnDisable))]
     public static void LoadingScreenProgressComponent_OnDisable()
     {
         Fixes.UpdateResolutionFrameRate();
+
+        if (!Plugin.AdjustableZoomLevel.Value) return;
+        Fixes.UpdateCameraZoom(false);
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(UI_Option), nameof(UI_Option.SetDropdownValue))]
     public static void UI_Option_SetDropdownValue(string value)
     {
-        Utils.UpdateResolutionData(Utils.GameplayOptionsInstance);
+        Utils.UpdateResolutionData(GameInstances.GameplayOptionsInstance);
     }
 
     [HarmonyPostfix]
@@ -297,7 +324,7 @@ public static class Patches
         var ammoCount = currWeapon.m_RangedWeapon.m_AmmoCount;
         if (currWeapon.m_CurrentAmmo < ammoCount)
         {
-            PlayerRuntimeDataInstance?.ManualReload();
+            GameInstances.PlayerRuntimeDataInstance?.ManualReload();
         }
     }
 
@@ -309,8 +336,6 @@ public static class Patches
     {
         Utils.UpdateResolutionData(__instance);
     }
-
-    private static List<Furniture_CookingTool> RestaurantTools { get; } = [];
 
 
     [HarmonyPrefix]
@@ -361,7 +386,7 @@ public static class Patches
     [HarmonyPatch(typeof(UI_GameplayOptions), nameof(UI_GameplayOptions.Update))]
     public static void UI_GameplayOptions_Update(ref UI_GameplayOptions __instance)
     {
-        Utils.GameplayOptionsInstance = __instance;
+        GameInstances.GameplayOptionsInstance = __instance;
     }
 
 

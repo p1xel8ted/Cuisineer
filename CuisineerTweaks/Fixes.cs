@@ -1,17 +1,23 @@
-﻿namespace CuisineerTweaks;
+﻿using Cinemachine;
+using Il2CppInterop.Runtime;
+using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
+using Object = Il2CppSystem.Object;
+
+namespace CuisineerTweaks;
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public static class Fixes
 {
-    private const string MainMenuScene = "MainMenuScene";
+  
     public static int ResolutionWidth { get; set; }
     public static int ResolutionHeight { get; set; }
     public static FullScreenMode FullScreenMode { get; set; }
     public static int MaxRefreshRate { get; set; }
-
     private static int TimeScale => Utils.FindLowestFrameRateMultipleAboveFifty(MaxRefreshRate);
     private static Dictionary<string, int> OriginalItemStackSizes { get; } = new();
     private static Dictionary<string, float> OriginalWeaponTimes { get; } = new();
+
+
 
     internal static void UpdateWeaponCooldowns()
     {
@@ -40,6 +46,55 @@ public static class Fixes
             weapon.m_SpecialAttackCooldown = newCooldown;
             Utils.WriteLog($"Updated weapon cooldown for {slot.m_Weapon.m_WeaponName} from {cooldown} to {newCooldown}", true);
         }
+    }
+
+
+    internal static void UpdateCameraZoom(bool showMessage = true)
+    {
+        if (!Plugin.AdjustableZoomLevel.Value) return;
+        if (GameInstances.PlayerCameraInstance == null)
+        {
+            var cameras = Utils.FindIl2CppType<CinemachineVirtualCamera>();
+            foreach (var cam in cameras.Where(cam => cam != null && cam.name.Equals(Const.VcamPlayerCharacter)))
+            {
+                GameInstances.PlayerCameraInstance = cam;
+                break;
+            }
+        }
+        
+        if (GameInstances.PlayerCameraInstance == null || GameInstances.MapTransitionManagerInstance == null || GameInstances.MapTransitionManagerInstance.m_CurrMapData == null) return;
+
+        var newZoom = GetNewZoomValue(Plugin.RelativeZoomAdjustment.Value);
+        var difference = newZoom - GameInstances.MapTransitionManagerInstance.m_CurrMapData.m_OrthoSize;
+
+        GameInstances.PlayerCameraInstance.m_Lens = GameInstances.PlayerCameraInstance.m_Lens with {OrthographicSize = newZoom};
+
+        if (!showMessage) return;
+        Utils.ShowScreenMessage($"{Lang.GetZoomAdjustedByMessage()} {difference:F1}", 1);
+    }
+
+    internal static float GetNewZoomValue(float original)
+    {
+        var currentOrthographicSize = GameInstances.MapTransitionManagerInstance.m_CurrMapData.m_OrthoSize;
+
+        if (!Plugin.AdjustableZoomLevel.Value)
+        {
+            return currentOrthographicSize;
+        }
+        
+        if (Plugin.UseStaticZoomLevel.Value)
+        {
+            return Plugin.StaticZoomAdjustment.Value;
+        }
+      
+        var adjustment = Mathf.Round(original * 10f) / 10f; // Directly round the original value
+        var adjustedSize = currentOrthographicSize + adjustment; // Apply the adjustment directly
+
+        // Ensure the adjusted size does not go below 0.5
+        adjustedSize = Mathf.Max(adjustedSize, 0.5f);
+
+
+        return adjustedSize;
     }
 
 
@@ -73,7 +128,7 @@ public static class Fixes
 
     internal static void RunFixes(string scene, bool refresh = false)
     {
-        Utils.WriteLog(!refresh ? $"New Scene {scene} Loaded: Running Fixes" : $"Refresh Requested: Running Fixes", true);
+        Utils.WriteLog(!refresh ? $"New Scene {scene} Loaded: Running Fixes" : "Refresh Requested: Running Fixes", true);
 
         UpdateResolutionFrameRate();
         UpdateFixedDeltaTime();
@@ -82,6 +137,7 @@ public static class Fixes
         UpdateWeaponCooldowns();
         UpdateMainMenu(scene);
         UpdateCheats();
+        UpdateCameraZoom(false);
     }
 
     internal static void UpdateResolutionFrameRate()
@@ -115,7 +171,7 @@ public static class Fixes
             Utils.WriteLog($"fixedDeltaTime is already {newValue} ({targetFPS}fps). No update necessary.");
             return;
         }
-        
+
         var oldFps = Mathf.Round(1f / Time.fixedDeltaTime);
         var newFps = Mathf.Round(1f / newValue);
 
@@ -141,9 +197,9 @@ public static class Fixes
 
     private static void UpdateMainMenu(string scene)
     {
-        if (!scene.Equals(MainMenuScene)) return;
+        if (!scene.Equals(Const.MainMenuScene)) return;
         if (!Plugin.CorrectMainMenuAspect.Value) return;
-        const float baseAspect = 16f / 9f;
+       
         float currentAspect;
         if (ResolutionHeight == 0 || ResolutionWidth == 0)
         {
@@ -154,11 +210,11 @@ public static class Fixes
             currentAspect = (float) ResolutionWidth / ResolutionHeight;
         }
 
-        if (currentAspect != 0 && currentAspect <= baseAspect) return;
+        if (currentAspect != 0 && currentAspect <= Const.BaseAspect) return;
 
-        var positiveScaleFactor = currentAspect / baseAspect;
+        var positiveScaleFactor = currentAspect /  Const.BaseAspect;
         var negativeScaleFactor = 1f / positiveScaleFactor;
-        Utils.WriteLog($"Current aspect ratio ({currentAspect}) is greater than base aspect ratio ({baseAspect}). Resizing UI elements.");
+        Utils.WriteLog($"Current aspect ratio ({currentAspect}) is greater than base aspect ratio ({ Const.BaseAspect}). Resizing UI elements.");
 
         Utils.ScaleElement("UI_MainMenuCanvas/Mask", true);
         Utils.ScaleElement("UI_MainMenuCanvas/Mask/UI_MainMenu/Container", false, positiveScaleFactor);
