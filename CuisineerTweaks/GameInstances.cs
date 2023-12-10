@@ -1,6 +1,4 @@
-﻿using Cinemachine;
-
-namespace CuisineerTweaks;
+﻿namespace CuisineerTweaks;
 
 public static class GameInstances
 {

@@ -30,20 +30,8 @@
         <Reference Include="Cinemachine">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Cinemachine.dll</HintPath>
         </Reference>
-        <Reference Include="clipper_library">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\clipper_library.dll</HintPath>
-        </Reference>
-        <Reference Include="com.rlabrecque.steamworks.net">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\com.rlabrecque.steamworks.net.dll</HintPath>
-        </Reference>
-        <Reference Include="DOTween">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\DOTween.dll</HintPath>
-        </Reference>
         <Reference Include="Drawing">
             <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Drawing.dll</HintPath>
-        </Reference>
-        <Reference Include="Il2CppMono.Security">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Il2CppMono.Security.dll</HintPath>
         </Reference>
         <Reference Include="Il2Cppmscorlib">
             <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Il2Cppmscorlib.dll</HintPath>
@@ -63,21 +51,6 @@
         <Reference Include="PackageTools">
             <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\PackageTools.dll</HintPath>
         </Reference>
-        <Reference Include="Pathfinding.ClipperLib">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Pathfinding.ClipperLib.dll</HintPath>
-        </Reference>
-        <Reference Include="Pathfinding.Ionic.Zip.Reduced">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Pathfinding.Ionic.Zip.Reduced.dll</HintPath>
-        </Reference>
-        <Reference Include="Pathfinding.Poly2Tri">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Pathfinding.Poly2Tri.dll</HintPath>
-        </Reference>
-        <Reference Include="Rewired_Core">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Rewired_Core.dll</HintPath>
-        </Reference>
-        <Reference Include="Rewired_Windows">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Rewired_Windows.dll</HintPath>
-        </Reference>
         <Reference Include="Unity.Burst">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Unity.Burst.dll</HintPath>
         </Reference>
@@ -86,9 +59,6 @@
         </Reference>
         <Reference Include="Unity.Collections">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Unity.Collections.dll</HintPath>
-        </Reference>
-        <Reference Include="Unity.Mathematics">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Unity.Mathematics.dll</HintPath>
         </Reference>
         <Reference Include="Unity.Postprocessing.Runtime">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\Unity.Postprocessing.Runtime.dll</HintPath>
@@ -147,20 +117,11 @@
         <Reference Include="UnityEngine.DirectorModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.DirectorModule.dll</HintPath>
         </Reference>
-        <Reference Include="UnityEngine.DSPGraphModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.DSPGraphModule.dll</HintPath>
-        </Reference>
         <Reference Include="UnityEngine.GameCenterModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.GameCenterModule.dll</HintPath>
         </Reference>
-        <Reference Include="UnityEngine.GIModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.GIModule.dll</HintPath>
-        </Reference>
         <Reference Include="UnityEngine.GridModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.GridModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.HotReloadModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.HotReloadModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.ImageConversionModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.ImageConversionModule.dll</HintPath>
@@ -170,9 +131,6 @@
         </Reference>
         <Reference Include="UnityEngine.InputLegacyModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.InputLegacyModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.InputModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.InputModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.JSONSerializeModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.JSONSerializeModule.dll</HintPath>
@@ -191,12 +149,6 @@
         </Reference>
         <Reference Include="UnityEngine.PhysicsModule">
             <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.PhysicsModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.ProfilerModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.ProfilerModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.ScreenCaptureModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.ScreenCaptureModule.dll</HintPath>
@@ -234,9 +186,6 @@
         <Reference Include="UnityEngine.TilemapModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.TilemapModule.dll</HintPath>
         </Reference>
-        <Reference Include="UnityEngine.TLSModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.TLSModule.dll</HintPath>
-        </Reference>
         <Reference Include="UnityEngine.UI">
             <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.UI.dll</HintPath>
         </Reference>
@@ -249,9 +198,6 @@
         <Reference Include="UnityEngine.UIModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.UIModule.dll</HintPath>
         </Reference>
-        <Reference Include="UnityEngine.UmbraModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.UmbraModule.dll</HintPath>
-        </Reference>
         <Reference Include="UnityEngine.UNETModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.UNETModule.dll</HintPath>
         </Reference>
@@ -260,12 +206,6 @@
         </Reference>
         <Reference Include="UnityEngine.UnityConnectModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.UnityConnectModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.UnityCurlModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.UnityCurlModule.dll</HintPath>
-        </Reference>
-        <Reference Include="UnityEngine.UnityTestProtocolModule">
-          <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.UnityTestProtocolModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UnityWebRequestAssetBundleModule">
           <HintPath>F:\Games\steamapps\common\Cuisineer\BepInEx\interop\UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath>

@@ -6,7 +6,7 @@ public static class Patches
 {
     private static List<Furniture_CookingTool> RestaurantTools { get; } = [];
     private static float NextRegen { get; set; }
-    
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.Clone))]
     [HarmonyPatch(typeof(ItemInstance), nameof(ItemInstance.CloneWithCount))]
@@ -420,8 +420,9 @@ public static class Patches
         //add refresh rates that are in  `refreshRates` but not in `frameRateDatas` and log it
         foreach (var refreshRate in refreshRates.Where(refreshRate => frameRateDatas.All(a => a.m_FPS != refreshRate)))
         {
+            if (refreshRate < 50) continue;
             frameRateDatas.Add(new FramerateData {m_FPS = refreshRate});
-            Utils.WriteLog($"{refreshRate}Hz not detected in Target Framerate options; adding now.", true);
+            Utils.WriteLog($"{refreshRate}Hz not detected in Target Framerate options; adding now.");
         }
 
 

@@ -1,7 +1,4 @@
-﻿using Cinemachine;
-using Il2CppInterop.Runtime;
-
-namespace CuisineerTweaks;
+﻿namespace CuisineerTweaks;
 
 public static class Utils
 {
@@ -56,7 +53,7 @@ public static class Utils
         Fixes.MaxRefreshRate = UI_GameplayOptions.FramerateDatas[__instance.m_FramerateSelection.DropDown.value].m_FPS;
 
 
-        WriteLog($"Chosen Display Settings: {Fixes.ResolutionWidth}x{Fixes.ResolutionHeight}@{Fixes.MaxRefreshRate}Hz in {Fixes.FullScreenMode} mode", true);
+        WriteLog($"Chosen Display Settings: {Fixes.ResolutionWidth}x{Fixes.ResolutionHeight}@{Fixes.MaxRefreshRate}Hz in {Fixes.FullScreenMode} mode");
         if (!changeRes) return;
         Fixes.UpdateResolutionFrameRate();
     }

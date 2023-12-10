@@ -1,9 +1,4 @@
-﻿using Cinemachine;
-using Il2CppInterop.Runtime;
-using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
-using Object = Il2CppSystem.Object;
-
-namespace CuisineerTweaks;
+﻿namespace CuisineerTweaks;
 
 [SuppressMessage("ReSharper", "InconsistentNaming")]
 public static class Fixes
@@ -33,7 +28,7 @@ public static class Fixes
             if (!Plugin.ModifyWeaponSpecialCooldown.Value)
             {
                 weapon.m_SpecialAttackCooldown = OriginalWeaponTimes[slot.m_Weapon.m_WeaponName];
-                Utils.WriteLog($"Reset weapon cooldown for {slot.m_Weapon.m_WeaponName} to {weapon.m_SpecialAttackCooldown}", true);
+                Utils.WriteLog($"Reset weapon cooldown for {slot.m_Weapon.m_WeaponName} to {weapon.m_SpecialAttackCooldown}");
 
                 continue;
             }
@@ -42,7 +37,7 @@ public static class Fixes
             var newCooldown = cooldown * (1f - weaponCooldownPercent / 100f);
 
             weapon.m_SpecialAttackCooldown = newCooldown;
-            Utils.WriteLog($"Updated weapon cooldown for {slot.m_Weapon.m_WeaponName} from {cooldown} to {newCooldown}", true);
+            Utils.WriteLog($"Updated weapon cooldown for {slot.m_Weapon.m_WeaponName} from {cooldown} to {newCooldown}");
         }
     }
 
